@@ -159,7 +159,7 @@ class HubertPretrainingTask(FairseqTask):
 
     def load_dataset(self, split: str, **kwargs) -> None:
         manifest = f"{self.cfg.data}/{split}.tsv"
-        dicts = [self.target_dictionary] if self.cfg.fine_tuning else self.dictionaries
+        dicts = self.target_dictionary if self.cfg.fine_tuning else self.dictionaries
         pad_list = [dict.pad() for dict in dicts]
         eos_list = [dict.eos() for dict in dicts]
         procs = [LabelEncoder(dict) for dict in dicts]

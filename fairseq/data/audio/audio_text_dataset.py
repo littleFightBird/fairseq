@@ -54,7 +54,7 @@ def load_paired_data(manifest_path, max_keep, min_keep):
             f"longest-loaded={max(sizes)}, shortest-loaded={min(sizes)}"
         )
     )
-    return data_dict, inds
+    return data_dict, inds, sizes
 
     
 
@@ -88,27 +88,212 @@ def load_text_only_data(text_only_data_set_path, max_text, min_text):
             f"longest-loaded={max(sizes)}, shortest-loaded={min(sizes)}"
         )
     )
-    return data_dict, inds
-
-def load_label(label_path, inds, tot):
-    with open(label_path) as f:
-        labels = [line.rstrip() for line in f]
-        assert (
-            len(labels) == tot
-        ), f"number of labels does not match ({len(labels)} != {tot})"
-        labels = [labels[i] for i in inds]
-    return labels
+    return data_dict, inds, sizes
 
 
-def load_label_offset(label_path, inds, tot):
-    with open(label_path) as f:
-        code_lengths = [len(line.encode("utf-8")) for line in f]
-        assert (
-            len(code_lengths) == tot
-        ), f"number of labels does not match ({len(code_lengths)} != {tot})"
-        offsets = list(itertools.accumulate([0] + code_lengths))
-        offsets = [(offsets[i], offsets[i + 1]) for i in inds]
-    return offsets
+
+class AudioDataset(FairseqDataset):
+    def __init__(
+        self,
+        audio_path: str,
+        sample_rate: float,
+        max_keep_sample_size: int = None,
+        min_keep_sample_size: int = None,
+        label_processors: Optional[List[Any]] = None,
+        pad_list: List[str],
+        eos_list: List[str],
+        shuffle: bool = True,
+        pad_audio: bool = True,
+        normalize: bool = False,
+        fbank_bins: int = 80,
+        max_sample_size: int=None
+    ):
+        self.audio_data_dict, self.audio_inds, self.sizes = load_paired_data(
+            manifest_path, max_keep_sample_size, min_keep_sample_size
+        )
+
+        self.sample_rate = sample_rate
+        self.shuffle = shuffle
+
+        self.pad_list = pad_list
+        self.eos_list = eos_list
+        self.label_processors = label_processors
+        self.fbank_bins = fbank_bins
+        self.max_sample_size = max_sample_size
+        self.max_text_size = max_text_size
+
+    def __getitem__(self, index):
+        wav = self.get_audio(index)
+        phoneme_token,bpe_token = self.get_labels(index)
+        return {"id": index, "source": wav, "phoneme": phoneme_token, "bpe":bpe_token}
+
+    def __len__(self):
+        return len(self.sizes)
+
+    def ordered_indices(self):
+        if self.shuffle:
+            order = [np.random.permutation(len(self))]
+        else:
+            order = [np.arange(len(self))]
+
+        order.append(self.sizes)
+        return np.lexsort(order)[::-1]
+
+    def get_audio(self, index):
+        import soundfile as sf
+
+        wav_path = self.audio_data_dict[index]["path"]
+        wav = get_fbank(wav_path,self.fbank_bins)
+        if self.normalize:
+            with torch.no_grad():
+                wav = F.layer_norm(wav, wav.shape)
+        return wav
+
+    def get_label(self, index):
+        data = self.audio_data_dict[index]
+        phoneme_token = self.label_processors["phoneme"](data["phoneme"])
+        bpe_token = self.label_processors["word"](data["word"])
+        return phoneme_token, bpe_token
+
+    def collater(self, samples):
+        # target = max(sizes) -> random_crop not used
+        # target = max_sample_size -> random_crop used for long
+        samples = [s for s in samples if s["source"] is not None]
+        if len(samples) == 0:
+            return {}
+
+        audios = [s["source"] for s in samples]
+        audio_sizes = [len(s) for s in audios]
+        if self.pad_audio:
+            audio_size = min(max(audio_sizes), self.max_sample_size)
+        else:
+            audio_size = min(min(audio_sizes), self.max_sample_size)
+
+        collated_audios, padding_mask, audio_starts = self.collater_audio(
+            audios, audio_size
+        )
+
+        phoneme_target = [s["phoneme"] for s in samples]
+        bpe_target = [s["bpe"] for s in samples]
+
+        phoneme_mask = self.phoneme_padding_mask(phoneme_target)
+        targets_list, lengths_list, ntokens_list = self.collater_label(
+            phoneme_target, bpe_target, audio_size, audio_starts, phoneme_size
+        )
+
+        net_input = {
+            "source": collated_audios, 
+            "padding_mask": padding_mask, 
+            "phoneme_source": targets_list[0], 
+            "phoneme_mask": phoneme_mask
+        }
+        batch = {
+            "id": torch.LongTensor([s["id"] for s in samples]),
+            "net_input": net_input,
+        }
+
+        batch["phoneme_length"] = lengths_list[0]
+        batch["phoneme_ntoken"] = ntokens_list[0]
+        batch["phoneme_target"] = targets_list[0]
+        batch["bpe_length"] = lengths_list[0]
+        batch["bpe_ntoken"] = ntokens_list[0]
+        batch["bpe_target"] = targets_list[0]
+        return batch
+
+    def phoneme_padding_mask(self, phoneme_target):
+        phoneme_sizes = [ len(s) for s in phoneme_target]
+        max_size = max(phoneme_sizes)
+        batch_size = len(phoneme_target)
+        padd_mask = torch.BoolTensor((batch_size, max_size)).fill_(False)
+        for  i, phoneme in phoneme_target:
+            diff = len(phoneme) - max_size
+            if diff == 0:
+                continue
+            else:
+                padd_mask[i,diff:]=True
+        return padd_mask
+
+    def crop_to_max_size(self, wav, target_size):
+        size = len(wav)
+        diff = size - target_size
+        if diff <= 0:
+            return wav, 0
+
+        start, end = 0, target_size
+        if self.random_crop:
+            start = np.random.randint(0, diff + 1)
+            end = size - diff + start
+        return wav[start:end], start
+
+    def collater_audio(self, audios, audio_size):
+        collated_audios = audios[0].new_zeros(len(audios), audio_size)
+        padding_mask = (
+            torch.BoolTensor(collated_audios.shape).fill_(False)
+            # if self.pad_audio else None
+        )
+        audio_starts = [0 for _ in audios]
+        for i, audio in enumerate(audios):
+            diff = len(audio) - audio_size
+            if diff == 0:
+                collated_audios[i] = audio
+            elif diff < 0:
+                assert self.pad_audio
+                collated_audios[i] = torch.cat(
+                    [audio, audio.new_full((-diff,), 0.0)]
+                )
+                padding_mask[i, diff:] = True
+            else:
+                collated_audios[i], audio_starts[i] = self.crop_to_max_size(
+                    audio, audio_size
+                )
+
+        return collated_audios, padding_mask, audio_starts
+
+    def collater_seq_label(self, targets, pad):
+        lengths = torch.LongTensor([len(t) for t in targets])
+        ntokens = lengths.sum().item()
+        targets = data_utils.collate_tokens(
+            targets, pad_idx=pad, left_pad=False
+        )
+        return targets, lengths, ntokens
+
+    def collater_label(self, phoneme_target, bpe_target, audio_size, audio_starts):
+        phoneme_targets, phoneme_lengths, phoneme_ntokens = self.collater_seq_label(
+            phoneme_targets, self.pad_list[0]
+        )
+
+        bpe_targets, bpe_lengths, bpe_ntokens = self.collater_seq_label(
+            phoneme_targets, self.pad_list[1]
+        )
+        
+        targets = [phoneme_targets, bpe_targets]
+        lengths = [phoneme_lengths, bpe_lengths]
+        ntokens = [phoneme_ntokens, bpe_ntokens]
+
+        return targets, lengths, ntokens
+
+class TextDataset(FairseqDataset):
+    def __init__(
+        self,
+        data_file_path: str,
+        max_text_num:int = None,
+        min_text_num:int = None,
+        data_process:Optional[List[Any]] = None,
+        shuffle: bool = True
+    ):
+        self.data_dict, self.inds = load_text_only_data(
+            data_file_path, max_text_num, min_text_num
+        )
+        self.shuffle = shuffle
+        self.sizes = 
+
+    def __getitem__(self, index):
+        wav = self.get_audio(index)
+        phoneme_token,bpe_token = self.get_labels(index)
+        return {"id": index, "source": wav, "phoneme": phoneme_token, "bpe":bpe_token}
+
+    def __len__(self):
+        return len(self.sizes)
 
 # We do batch sample in __init__
 class AudioTextDataset(FairseqDataset):
