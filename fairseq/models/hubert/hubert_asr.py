@@ -14,6 +14,7 @@ from fairseq import checkpoint_utils, tasks, utils
 from fairseq.dataclass import FairseqDataclass
 from fairseq.dataclass.utils import convert_namespace_to_omegaconf
 from fairseq.models import BaseFairseqModel, FairseqEncoder, register_model
+from fairseq.models.transformer import TransformerEncoder, TransformerDecoder
 from fairseq.models.hubert.hubert import MASKING_DISTRIBUTION_CHOICES
 from fairseq.tasks import FairseqTask
 from omegaconf import II, MISSING
@@ -175,6 +176,77 @@ class HubertCtc(BaseFairseqModel):
         x = self.w2v_encoder(**kwargs)
         return x
 
+class HubertTextMTLConfig(HubertSeq2SeqConfig):
+    
+
+
+@ register_model("hubert_text_mtl")
+class HubertTextMTL(BaseFairseqModel):
+    def __init__(self, cfg: HubertSeq2SeqConfig, w2v_encoder: BaseFairseqModel, decoder: BaseFairseqModel):
+        super().__init__()
+        self.cfg = cfg
+        self.w2v_encoder = w2v_encoder
+        self.decoder = decoder
+        
+    def upgrade_state_dict_named(self, state_dict, name):
+        super().upgrade_state_dict_named(state_dict, name)
+        return state_dict
+
+    @classmethod
+    def build_embedding(cls, args, dictionary, embed_dim, path=None):
+        num_embeddings = len(dictionary)
+        padding_idx = dictionary.pad()
+
+        emb = Embedding(num_embeddings, embed_dim, padding_idx)
+        # if provided, load from preloaded dictionaries
+        if path:
+            embed_dict = utils.parse_embedding(path)
+            utils.load_embedding(embed_dict, dictionary, emb)
+        return emb
+
+    @classmethod
+    def build_model(cls, cfg: HubertSeq2SeqConfig, task: FairseqTask):
+        """Build a new model instance."""
+        w2v_encoder = HubertEncoder(cfg, task.target_dictionary)
+        embedding = cls.build_embedding(
+            cfg, task.target_dictionary, cfg.decoder_embed_dim, None
+        )
+        decoder = TransformerDecoder(
+            cfg, 
+            task.target_dictionary,
+            embedding
+        )
+        text_encoder = TransformerEncoder(
+            cfg
+        )
+        return cls(cfg, w2v_encoder, decoder)
+
+    def get_normalized_probs(self, net_output, log_probs):
+        """Get normalized probabilities (or log probs) from a net's output."""
+
+        logits = net_output["encoder_out"]
+        if log_probs:
+            return utils.log_softmax(logits.float(), dim=-1)
+        else:
+            return utils.softmax(logits.float(), dim=-1)
+
+    def get_logits(self, net_output):
+        logits = net_output["encoder_out"]
+        padding = net_output["encoder_padding_mask"]
+        if padding is not None and padding.any():
+            padding = padding.T
+            logits[padding][..., 0] = 0
+            logits[padding][..., 1:] = float("-inf")
+
+        return logits
+
+    def forward(self, prev_output_tokens, **kwargs):
+        encoder_out = self.w2v_encoder(**kwargs)
+        decoder_out, _ = self.decoder(
+            prev_output_tokens,
+            encoder_out= x["encoder_out_list"][-1],
+        )
+        return encoder_out, decoder_out
 
 @dataclass
 class HubertSeq2SeqConfig(HubertAsrConfig):
@@ -233,6 +305,47 @@ class HubertSeq2SeqConfig(HubertAsrConfig):
         metadata={"help": "share decoder input and output embeddings"},
     )
 
+@dataclass
+class EncDecBaseConfig(FairseqDataclass):
+    embed_dim: Optional[int] = field(
+        default=512, metadata={"help": "embedding dimension"}
+    )
+    ffn_embed_dim: int = field(
+        default=2048, metadata={"help": "embedding dimension for FFN"}
+    )
+    layers: int = field(default=6, metadata={"help": "number of layers"})
+    attention_heads: int = field(
+        default=8, metadata={"help": "number of attention heads"}
+    )
+    normalize_before: bool = field(
+        default=False, metadata={"help": "apply layernorm before each block"}
+    )
+    learned_pos: bool = field(
+        default=False, metadata={"help": "use learned positional embeddings"}
+    )
+    # args for "Reducing Transformer Depth on Demand with Structured Dropout" (Fan et al., 2019)
+    layerdrop: float = field(default=0, metadata={"help": "LayerDrop probability"})
+    layers_to_keep: Optional[List[int]] = field(
+        default=None, metadata={"help": "which layers to *keep* when pruning"}
+    )
+
+class TextEncoder(FairseqEncoder):
+    def __init__(self, cfg: HubertAsrConfig, tgt_dict=None):
+        args_overrides = {
+            "embed_dim": cfg.text_embed_dim,
+            "ffn_embed_dim": cfg.text_ffn_embed_dim,
+            "layers": cfg.text_layers,
+            "attention_heads": cfg.text_attention_heads,
+            "normalize_before": cfg.text_normalize_before,
+            "learned_pos": cfg.text_learned_pos,
+            "layerdrop": cfg.text_layerdrop,
+            "layers_to_keep": cfg.text_layers_to_keep
+        }
+
+        emb = Embedding(num_embeddings, embed_dim, padding_idx)
+        self.encoder = TransformerEncoder(
+
+        )
 
 class HubertEncoder(FairseqEncoder):
     def __init__(self, cfg: HubertAsrConfig, tgt_dict=None):
@@ -256,6 +369,8 @@ class HubertEncoder(FairseqEncoder):
             "encoder_layerdrop": cfg.layerdrop,
             "feature_grad_mult": cfg.feature_grad_mult,
         }
+
+
 
         if cfg.w2v_args is None:
             state = checkpoint_utils.load_checkpoint_to_cpu(
