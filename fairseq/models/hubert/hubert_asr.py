@@ -3,8 +3,10 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+from _typeshed import Self
 import contextlib
 from argparse import Namespace
+from logging import setLogRecordFactory
 from typing import Any
 
 import torch
@@ -18,6 +20,10 @@ from fairseq.models.transformer import TransformerEncoder, TransformerDecoder
 from fairseq.models.hubert.hubert import MASKING_DISTRIBUTION_CHOICES
 from fairseq.tasks import FairseqTask
 from omegaconf import II, MISSING
+from fairseq.modules import transformer_layer
+from fairseq.modules.checkpoint_activations import checkpoint_wrapper
+from fairseq.distributed import fsdp_wrap
+from fairseq.models.masked_lm import MaskedLMEncoder
 
 
 @dataclass
@@ -176,77 +182,7 @@ class HubertCtc(BaseFairseqModel):
         x = self.w2v_encoder(**kwargs)
         return x
 
-class HubertTextMTLConfig(HubertSeq2SeqConfig):
-    
 
-
-@ register_model("hubert_text_mtl")
-class HubertTextMTL(BaseFairseqModel):
-    def __init__(self, cfg: HubertSeq2SeqConfig, w2v_encoder: BaseFairseqModel, decoder: BaseFairseqModel):
-        super().__init__()
-        self.cfg = cfg
-        self.w2v_encoder = w2v_encoder
-        self.decoder = decoder
-        
-    def upgrade_state_dict_named(self, state_dict, name):
-        super().upgrade_state_dict_named(state_dict, name)
-        return state_dict
-
-    @classmethod
-    def build_embedding(cls, args, dictionary, embed_dim, path=None):
-        num_embeddings = len(dictionary)
-        padding_idx = dictionary.pad()
-
-        emb = Embedding(num_embeddings, embed_dim, padding_idx)
-        # if provided, load from preloaded dictionaries
-        if path:
-            embed_dict = utils.parse_embedding(path)
-            utils.load_embedding(embed_dict, dictionary, emb)
-        return emb
-
-    @classmethod
-    def build_model(cls, cfg: HubertSeq2SeqConfig, task: FairseqTask):
-        """Build a new model instance."""
-        w2v_encoder = HubertEncoder(cfg, task.target_dictionary)
-        embedding = cls.build_embedding(
-            cfg, task.target_dictionary, cfg.decoder_embed_dim, None
-        )
-        decoder = TransformerDecoder(
-            cfg, 
-            task.target_dictionary,
-            embedding
-        )
-        text_encoder = TransformerEncoder(
-            cfg
-        )
-        return cls(cfg, w2v_encoder, decoder)
-
-    def get_normalized_probs(self, net_output, log_probs):
-        """Get normalized probabilities (or log probs) from a net's output."""
-
-        logits = net_output["encoder_out"]
-        if log_probs:
-            return utils.log_softmax(logits.float(), dim=-1)
-        else:
-            return utils.softmax(logits.float(), dim=-1)
-
-    def get_logits(self, net_output):
-        logits = net_output["encoder_out"]
-        padding = net_output["encoder_padding_mask"]
-        if padding is not None and padding.any():
-            padding = padding.T
-            logits[padding][..., 0] = 0
-            logits[padding][..., 1:] = float("-inf")
-
-        return logits
-
-    def forward(self, prev_output_tokens, **kwargs):
-        encoder_out = self.w2v_encoder(**kwargs)
-        decoder_out, _ = self.decoder(
-            prev_output_tokens,
-            encoder_out= x["encoder_out_list"][-1],
-        )
-        return encoder_out, decoder_out
 
 @dataclass
 class HubertSeq2SeqConfig(HubertAsrConfig):
@@ -304,48 +240,6 @@ class HubertSeq2SeqConfig(HubertAsrConfig):
         default=False,
         metadata={"help": "share decoder input and output embeddings"},
     )
-
-@dataclass
-class EncDecBaseConfig(FairseqDataclass):
-    embed_dim: Optional[int] = field(
-        default=512, metadata={"help": "embedding dimension"}
-    )
-    ffn_embed_dim: int = field(
-        default=2048, metadata={"help": "embedding dimension for FFN"}
-    )
-    layers: int = field(default=6, metadata={"help": "number of layers"})
-    attention_heads: int = field(
-        default=8, metadata={"help": "number of attention heads"}
-    )
-    normalize_before: bool = field(
-        default=False, metadata={"help": "apply layernorm before each block"}
-    )
-    learned_pos: bool = field(
-        default=False, metadata={"help": "use learned positional embeddings"}
-    )
-    # args for "Reducing Transformer Depth on Demand with Structured Dropout" (Fan et al., 2019)
-    layerdrop: float = field(default=0, metadata={"help": "LayerDrop probability"})
-    layers_to_keep: Optional[List[int]] = field(
-        default=None, metadata={"help": "which layers to *keep* when pruning"}
-    )
-
-class TextEncoder(FairseqEncoder):
-    def __init__(self, cfg: HubertAsrConfig, tgt_dict=None):
-        args_overrides = {
-            "embed_dim": cfg.text_embed_dim,
-            "ffn_embed_dim": cfg.text_ffn_embed_dim,
-            "layers": cfg.text_layers,
-            "attention_heads": cfg.text_attention_heads,
-            "normalize_before": cfg.text_normalize_before,
-            "learned_pos": cfg.text_learned_pos,
-            "layerdrop": cfg.text_layerdrop,
-            "layers_to_keep": cfg.text_layers_to_keep
-        }
-
-        emb = Embedding(num_embeddings, embed_dim, padding_idx)
-        self.encoder = TransformerEncoder(
-
-        )
 
 class HubertEncoder(FairseqEncoder):
     def __init__(self, cfg: HubertAsrConfig, tgt_dict=None):
@@ -489,3 +383,166 @@ def Linear(in_features, out_features, bias=True):
     if bias:
         nn.init.constant_(m.bias, 0.0)
     return m
+
+@dataclass
+class HubertTextMTLConfig(HubertSeq2SeqConfig):
+    shared_encoder_layer: int = field(
+        default=3,
+        metadata={"help": "the number of shared encoder layers"},
+    )
+    embedding_aligner_dim: int = field(
+        default=1024,
+        metadata={"help": "the dimension of embedding aligner"}
+    )
+    text_encocder_embed_dim: int = field(
+        default=768,
+        metadata={"help": "the dimension of text encoder embedding"}
+    )
+
+class MaskedTextEncoder(BaseFairseqModel):
+
+
+@register_model("hubert_text_mtl")
+class HubertTextMTL(BaseFairseqModel):
+    def __init__(self, cfg: HubertTextMTLConfig, w2v_encoder: BaseFairseqModel, text_encoder:BaseFairseqModel, decoder: BaseFairseqModel):
+        super().__init__()
+        self.cfg = cfg
+        # 1. audio encoder
+        self.w2v_encoder = w2v_encoder
+        # 2. text encoder
+        self.text_encoder = text_encoder
+        # 3. decoder
+        self.decoder = decoder
+        # 4. shared encoder
+        self.shared_encoder = [ self.build_encoder_layer(cfg) for i in range(cfg.shared_encoder_layer)]
+        # 5. embedding aligner
+        self.embedding_aligner = nn.Parameter(torch.FloatTensor((cfg.encoder_ffn_embed_dim,cfg.embedding_aligner_dim)))
+
+        
+    def upgrade_state_dict_named(self, state_dict, name):
+        super().upgrade_state_dict_named(state_dict, name)
+        return state_dict
+
+    def build_encoder_layer(self, cfg):
+        layer = transformer_layer.TransformerEncoderLayerBase(cfg)
+        checkpoint = cfg.checkpoint_activations
+        if checkpoint:
+            offload_to_cpu = cfg.offload_activations
+            layer = checkpoint_wrapper(layer, offload_to_cpu=offload_to_cpu)
+        # if we are checkpointing, enforce that FSDP always wraps the
+        # checkpointed layer, regardless of layer size
+        min_params_to_wrap = cfg.min_params_to_wrap if not checkpoint else 0
+        layer = fsdp_wrap(layer, min_num_params=min_params_to_wrap)
+        return layer
+
+    @classmethod
+    def build_embedding(cls, args, dictionary, embed_dim, path=None):
+        num_embeddings = len(dictionary)
+        padding_idx = dictionary.pad()
+
+        emb = Embedding(num_embeddings, embed_dim, padding_idx)
+        # if provided, load from preloaded dictionaries
+        if path:
+            embed_dict = utils.parse_embedding(path)
+            utils.load_embedding(embed_dict, dictionary, emb)
+        return emb
+
+    @classmethod
+    def build_model(cls, cfg: HubertTextMTLConfig, task: FairseqTask):
+        """Build a new model instance."""
+        # 1. audio encoder
+        w2v_encoder = HubertEncoder(cfg, task.target_dictionary)
+
+        # 2. text encoder
+        text_encoder_embedding = cls.build_embedding(
+            cfg, task.state.dictionaries["phoneme"], cfg.text_encoder_embed_dim, None
+        )
+        text_encoder = MaskedLMEncoder(
+            cfg,
+            task.state.dictionaries["phoneme"]
+        )
+        # 3. decoder
+        decoder_embedding = cls.build_embedding(
+            cfg, task.state.dictionaries["bpe"], cfg.decoder_embed_dim, None
+        )
+        decoder = TransformerDecoder(
+            cfg, 
+            task.target_dictionary,
+            decoder_embedding
+        )
+        
+        return cls(cfg, w2v_encoder, text_encoder, decoder)
+
+    def forward(
+        self, 
+        audio_source, 
+        padding_mask,
+        prev_phoneme,
+        prev_bpe,
+        phoneme_padding_mask,
+        bpe_padding_mask,
+        _type: str = "speech",
+    ):
+        if _type == "speech":
+            return self.forward_speech(
+                audio_source,
+                padding_mask,
+                prev_bpe,
+                bpe_padding_mask
+            )
+        else:
+            return self.forward_text(
+                prev_phoneme,
+                phoneme_padding_mask,
+                prev_bpe,
+                bpe_padding_mask
+            )
+    
+    def forward_speech(
+        self,
+        audio_source,
+        padding_mask,
+        prev_bpe,
+        bpe_padding_mask
+    ):
+        # 1. audio encoder
+        # assert audio input is feature
+        assert(len(audio_source)==3)
+        encoder_out = self.w2v_encoder(audio_source, padding_mask, False)
+        x = encoder_out["encoder_out"]
+        # 2. audio encoder -> embedding aligner -> ctc prob
+        x = nn.functional.softmax(nn.functional.pairwise_distance(x,self.embedding_aligner), -1)
+
+        # 
+        # 3. audio encoder -> shared encoder
+        out = encoder_out["encoder_out"]
+        for transformer in self.shared_encoder:
+            out = transformer(out, encoder_out["encoder_padding_mask"])
+        return {
+            "ctc_prob": x,
+            "attention_prob": out
+        }
+
+
+    def forward_text(
+        self,
+        prev_phoneme,
+        phoneme_padding_mask,
+        prev_bpe,
+        bpe_padding_mask,
+    ):
+        # 1. text encoder
+        encoder_out = self.text_encoder(prev_phoneme, phoneme_padding_mask)
+        # 2. audio encoder -> embedding aligner -> MLM prob
+        x = encoder_out["encoder_out"]
+        x = nn.functional.softmax(
+            nn.functional.pairwise_distance(x,self.embedding_aligner)
+        )
+        # 4. audio encoder -> shared encoder
+        out = encoder_out["encoder_out"]
+        for transformer in self.shared_encoder:
+            out = transformer(out, encoder_out["encoder_padding_mask"])
+        return {
+            "ctc_prob": x,
+            "attention_prob": out
+        }
