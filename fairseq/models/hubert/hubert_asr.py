@@ -7,7 +7,9 @@ from _typeshed import Self
 import contextlib
 from argparse import Namespace
 from logging import setLogRecordFactory
+import math
 from typing import Any
+import random
 
 import torch
 import torch.nn as nn
@@ -398,13 +400,29 @@ class HubertTextMTLConfig(HubertSeq2SeqConfig):
         default=768,
         metadata={"help": "the dimension of text encoder embedding"}
     )
+    swap_embedding_ratio: float = field(
+        default=0,
+        metadata={"help": "the probability of embedding swapping"}
+    )
+    swap_embedding_phoneme_aware = field(
+        default=True,
+        metadata={"help": "swap embedding with phoneme aware"}
+    )
 
 class MaskedTextEncoder(BaseFairseqModel):
 
 
 @register_model("hubert_text_mtl")
 class HubertTextMTL(BaseFairseqModel):
-    def __init__(self, cfg: HubertTextMTLConfig, w2v_encoder: BaseFairseqModel, text_encoder:BaseFairseqModel, decoder: BaseFairseqModel):
+    def __init__(
+        self, 
+        cfg: HubertTextMTLConfig, 
+        w2v_encoder: BaseFairseqModel, 
+        text_encoder:BaseFairseqModel, 
+        decoder: BaseFairseqModel,
+        embedding_aligner,
+        ctc_proj
+    ):
         super().__init__()
         self.cfg = cfg
         # 1. audio encoder
@@ -416,8 +434,12 @@ class HubertTextMTL(BaseFairseqModel):
         # 4. shared encoder
         self.shared_encoder = [ self.build_encoder_layer(cfg) for i in range(cfg.shared_encoder_layer)]
         # 5. embedding aligner
-        self.embedding_aligner = nn.Parameter(torch.FloatTensor((cfg.encoder_ffn_embed_dim,cfg.embedding_aligner_dim)))
-
+        self.embedding_aligner = embedding_aligner
+        # 6. ctc proj
+        self.proj = ctc_proj
+        self.swap_embedding_ratio = cfg.swap_embedding_ratio
+        self.swap_embedding_phoneme_aware = cfg.swap_embedding_phoneme_aware
+        
         
     def upgrade_state_dict_named(self, state_dict, name):
         super().upgrade_state_dict_named(state_dict, name)
@@ -470,8 +492,17 @@ class HubertTextMTL(BaseFairseqModel):
             task.target_dictionary,
             decoder_embedding
         )
-        
-        return cls(cfg, w2v_encoder, text_encoder, decoder)
+        # embedding_aligner
+        embedding_aligner = nn.Parameter(
+            torch.FloatTensor(
+                (cfg.encoder_ffn_embed_dim, 
+                len(task.state.dictionaries["phonome"]))
+            )
+        )
+
+        # ctc proj
+        ctc_proj = nn.Linear(cfg.encoder_output_dim, len(task.state.dictionaries["bpe"]))
+        return cls(cfg, w2v_encoder, text_encoder, decoder, embedding_aligner, ctc_proj)
 
     def forward(
         self, 
@@ -497,39 +528,87 @@ class HubertTextMTL(BaseFairseqModel):
                 prev_bpe,
                 bpe_padding_mask
             )
+
+    def swap_embedding(self,audio_embedding, text_embedding, accum_alignment):
+        # audio_embedding is B*T*D 
+        # text_embedding is B*T*D
+        # assert the length of audio embedding is the same as text embedding
+        assert(audio_embedding.shape[1] == text_embedding.shape[1])
+        # building mask
+        bsz = audio_embedding.shape[0]
+        for i in range(bsz):
+            if self.swap_embedding_phoneme_aware:
+                mask = torch.ones((audio_embedding.shape[1]), device=audio_embedding.device)
+
+                indices = random.sample(list(range(len(1,accum_alignment[i]))), 
+                    math.ceil(len(accum_alignment)* self.swap_embedding_ratio))
+                for index in indices:
+                    start,end = accum_alignment[i][index-1], accum_alignment[i][index]
+                mask[i][start:end] = 0
+            else:
+                mask = (
+                    torch.randn(
+                        text_embedding[i].shape[0], 
+                        device=text_embedding.device
+                    ).uniform() > self.swap_embedding_ratio
+                ).float()
+            text_embedding_tmp = text_embedding[i] * mask + audio_embedding[i] * (1 - mask)
+            audio_embedding[i] = audio_embedding[i] * mask + text_embedding[i] * (1 - mask)
+            text_embedding[i] = text_embedding_tmp
+            
+
+
+    def get_accum_from_phoneme_seq(self, phoneme_seq, phoneme_padding_mask):
+        bsz = phoneme_seq.shape[0]
+        accum_lists = []
+        for i in range(bsz):
+            accum = [indice+1 for indice,j in enumerate(range(phoneme_seq[i].shape[0])) 
+                if phoneme_padding_mask[i][j] == True and phoneme_seq[i][j]!=phoneme_seq[i][j+1] ]
+            accum_lists.append(accum)
+        return accum_lists
     
     def forward_speech(
         self,
         audio_source,
         padding_mask,
-        prev_bpe,
-        bpe_padding_mask
+        prev_phoneme,
+        phoneme_padding_mask
     ):
         # 1. audio encoder
         # assert audio input is feature
         assert(len(audio_source)==3)
         encoder_out = self.w2v_encoder(audio_source, padding_mask, False)
+        
+        # 2. text_encoder 
+        text_encoder_out = self.text_encoder(prev_phoneme,phoneme_padding_mask)
+        # 3. text_encoder -> swap embedding
+        self.swap_embedding(
+            encoder_out["encoder_out"], 
+            text_encoder_out["encoder_out"],
+            self.get_accum_from_phoneme_seq(prev_phoneme)
+        )
         x = encoder_out["encoder_out"]
-        # 2. audio encoder -> embedding aligner -> ctc prob
+        xt = text_encoder_out["encoder_out"]
+        # 4. audio encoder -> embedding aligner -> ctc prob
+        #    text encoder -> embedding aligner -> mlm prob
         x = nn.functional.softmax(nn.functional.pairwise_distance(x,self.embedding_aligner), -1)
-
-        # 
-        # 3. audio encoder -> shared encoder
+        xt = nn.functional.softmax(nn.functional.pairwise_distance(xt,self.embedding_aligner), -1)
+        # 5. audio encoder -> shared encoder
         out = encoder_out["encoder_out"]
         for transformer in self.shared_encoder:
             out = transformer(out, encoder_out["encoder_padding_mask"])
+        out = self.proj(out)
         return {
             "ctc_prob": x,
-            "attention_prob": out
+            "mlm_prob": xt,
+            "final_ctc_prob": out
         }
 
 
     def forward_text(
         self,
         prev_phoneme,
-        phoneme_padding_mask,
-        prev_bpe,
-        bpe_padding_mask,
+        phoneme_padding_mask
     ):
         # 1. text encoder
         encoder_out = self.text_encoder(prev_phoneme, phoneme_padding_mask)
@@ -542,7 +621,8 @@ class HubertTextMTL(BaseFairseqModel):
         out = encoder_out["encoder_out"]
         for transformer in self.shared_encoder:
             out = transformer(out, encoder_out["encoder_padding_mask"])
+        out = self.proj(out)
         return {
-            "ctc_prob": x,
-            "attention_prob": out
+            "mlm_prob": x,
+            "final_ctc_prob": out
         }
