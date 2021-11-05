@@ -8,8 +8,9 @@ import contextlib
 from argparse import Namespace
 from logging import setLogRecordFactory
 import math
-from typing import Any
+from typing import Any, List
 import random
+from fairseq.data.dictionary import Dictionary
 
 import torch
 import torch.nn as nn
@@ -26,7 +27,8 @@ from fairseq.modules import transformer_layer
 from fairseq.modules.checkpoint_activations import checkpoint_wrapper
 from fairseq.distributed import fsdp_wrap
 from fairseq.models.masked_lm import MaskedLMEncoder
-
+from fairseq.tasks.optimize_ali_speech_language import OptimizingAlignmentTask
+from fairseq.data.data_utils import compute_mask_indices
 
 @dataclass
 class HubertAsrConfig(FairseqDataclass):
@@ -386,8 +388,48 @@ def Linear(in_features, out_features, bias=True):
         nn.init.constant_(m.bias, 0.0)
     return m
 
+class MaskedTextEncoderConfig(HubertCtcConfig):
+    text_encoder_layers: int = field(
+        default=8, metadata={"help": "num encoder layers in the text encoder"}
+    )
+    
+    # masking
+    text_encoder_apply_mask: bool = field(
+        default=False, metadata={"help": "apply masking during fine-tuning"}
+    )
+    text_encoder_mask_length: int = field(
+        default=10, metadata={"help": "repeat the mask indices multiple times"}
+    )
+    text_encoder_mask_prob: float = field(
+        default=0.5,
+        metadata={
+            "help": "probability of replacing a token with mask "
+            "(normalized by length)"
+        },
+    )
+    text_encoder_mask_selection: MASKING_DISTRIBUTION_CHOICES = field(
+        default="static", metadata={"help": "how to choose masks"}
+    )
+    text_encoder_mask_other: float = field(
+        default=0,
+        metadata={
+            "help": "secondary mask argument "
+            "(used for more complex distributions), "
+            "see help in compute_mask_indices"
+        },
+    )
+    text_encoder_no_mask_overlap: bool = field(
+        default=False, metadata={"help": "whether to allow masks to overlap"}
+    )
+    text_encoder_mask_min_space: int = field(
+        default=1,
+        metadata={
+            "help": "min space between spans (if no overlap is enabled)"
+        },
+    )
+
 @dataclass
-class HubertTextMTLConfig(HubertSeq2SeqConfig):
+class HubertTextMTLConfig(MaskedTextEncoderConfig):
     shared_encoder_layer: int = field(
         default=3,
         metadata={"help": "the number of shared encoder layers"},
@@ -395,10 +437,6 @@ class HubertTextMTLConfig(HubertSeq2SeqConfig):
     embedding_aligner_dim: int = field(
         default=1024,
         metadata={"help": "the dimension of embedding aligner"}
-    )
-    text_encocder_embed_dim: int = field(
-        default=768,
-        metadata={"help": "the dimension of text encoder embedding"}
     )
     swap_embedding_ratio: float = field(
         default=0,
@@ -410,7 +448,90 @@ class HubertTextMTLConfig(HubertSeq2SeqConfig):
     )
 
 class MaskedTextEncoder(BaseFairseqModel):
+    def __init__(
+        self,
+        cfg:HubertTextMTLConfig,
+        task:OptimizingAlignmentTask,
+        dictionaries
+    ):
+        super().__init__()
+        # 1. token embedding
+        self.token_embedding = self.build_embedding(cfg,dictionaries["phoneme"],cfg.w2v_args.encoder_embed_dim)
+        # 2. text encoder
+        self.MASK = task.MASK
+        self.encoder_layers = [ self.build_encoder_layer(cfg) for i in range(cfg.text_encoder_layers)]
+        self.proj = nn.Linear(cfg.w2v_args.model.encoder_embed_dim, cfg.encoder_output_dim))
+        self._dictionaries = dictionaries
+        self._mask_prob = cfg.text_encoder_mask_prob
+        self._apply_mask = cfg.text_encoder_apply_mask
+        self._mask_length = cfg.text_encoder_mask_length
+        self._mask_selection = cfg.text_encoder_mask_selection
+        self._mask_other = cfg.text_encoder_mask_other
+        self._no_mask_overlap = cfg.text_encoder_no_mask_overlap
+        self._mask_min_space = cfg.text_encoder_mask_min_space
 
+    def forward(
+        self,
+        prev_phoneme,
+        prev_phoneme_mask,
+    ):
+        # 1. apply mask
+        if self.apply_mask:
+            prev_phoneme = self.apply_mask(prev_phoneme, self.dictionaries["phoneme"])
+        # 2. embedding
+        pre_phoneme = self.token_embedding(prev_phoneme)
+        # 3. encoder
+        for transformer in self.encoder_layers:
+            prev_phoneme = transformer(prev_phoneme, prev_phoneme_mask)
+        # 4. project
+        prev_phoneme = self.proj(prev_phoneme)
+        return {
+            "encoder_out": prev_phoneme,
+            "padding_mask": prev_phoneme_mask
+        }
+
+    def apply_mask(self, x, padding_mask, target_list):
+        B, T = x.shape
+        if self.mask_prob > 0:
+            mask_indices = compute_mask_indices(
+                (B, T),
+                padding_mask,
+                self._mask_prob,
+                self._mask_length,
+                self._mask_selection,
+                self._mask_other,
+                min_masks=2,
+                no_overlap=self._no_mask_overlap,
+                min_space=self._mask_min_space,
+            )
+            mask_indices = torch.from_numpy(mask_indices).to(x.device)
+            x[mask_indices] = self.MASK
+        else:
+            mask_indices = None
+        return x, mask_indices
+    @classmethod
+    def build_embedding(cls, args, dictionary, embed_dim, path=None):
+        num_embeddings = len(dictionary)
+        padding_idx = dictionary.pad()
+
+        emb = Embedding(num_embeddings, embed_dim, padding_idx)
+        # if provided, load from preloaded dictionaries
+        if path:
+            embed_dict = utils.parse_embedding(path)
+            utils.load_embedding(embed_dict, dictionary, emb)
+        return emb
+
+    def build_encoder_layer(self, cfg):
+        layer = transformer_layer.TransformerEncoderLayerBase(cfg)
+        checkpoint = cfg.checkpoint_activations
+        if checkpoint:
+            offload_to_cpu = cfg.offload_activations
+            layer = checkpoint_wrapper(layer, offload_to_cpu=offload_to_cpu)
+        # if we are checkpointing, enforce that FSDP always wraps the
+        # checkpointed layer, regardless of layer size
+        min_params_to_wrap = cfg.min_params_to_wrap if not checkpoint else 0
+        layer = fsdp_wrap(layer, min_num_params=min_params_to_wrap)
+        return layer
 
 @register_model("hubert_text_mtl")
 class HubertTextMTL(BaseFairseqModel):
@@ -479,9 +600,10 @@ class HubertTextMTL(BaseFairseqModel):
         text_encoder_embedding = cls.build_embedding(
             cfg, task.state.dictionaries["phoneme"], cfg.text_encoder_embed_dim, None
         )
-        text_encoder = MaskedLMEncoder(
+        text_encoder = MaskedTextEncoder(
             cfg,
-            task.state.dictionaries["phoneme"]
+            task,
+            task.state.dictionaries
         )
         # 3. decoder
         decoder_embedding = cls.build_embedding(

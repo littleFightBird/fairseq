@@ -161,7 +161,11 @@ class OptimizingAlignmentTask(FairseqTask):
 
     def load_dictionaries(self):
         label_dir = self.cfg.data if self.cfg.label_dir is None else self.cfg.label_dir
-        dictionaries = {label:Dictionary.load(f"{label_dir}/dict.{label}.txt") for label in self.cfg.labels}
+        dictionaries = {
+            "phoneme":Dictionary.load(f"{label_dir}/dict.phoneme.txt"),
+            "bpe":Dictionary.load(f"{label_dir}/dict.bpe.txt") 
+        }
+        self.MASK = dictionaries["phoneme"].add_symbol("<mask>")
         return dictionaries
 
     def get_label_dir(self) -> str:
@@ -176,6 +180,7 @@ class OptimizingAlignmentTask(FairseqTask):
         dicts = self.dictionaries()
         pad_list = [dict.pad() for dict in dicts]
         eos_list = [dict.eos() for dict in dicts]
+
         procs = [LabelEncoder(dicts[key]) for key in dicts.keys() if key!= "word" else SentencepiecesTokenizer(bpe_model) ]
         paths = [
             f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.labels

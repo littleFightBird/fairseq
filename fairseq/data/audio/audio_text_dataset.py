@@ -285,7 +285,6 @@ class TextDataset(FairseqDataset):
             data_file_path, max_text_num, min_text_num
         )
         self.shuffle = shuffle
-        self.sizes = 
 
     def __getitem__(self, index):
         wav = self.get_audio(index)
@@ -349,10 +348,10 @@ class AudioTextDataset(FairseqDataset):
         # order by 
 
         # create text batch and audio batch
-        audio_batch = create_batch(self.audio_data_dict, batch_max_sample_size)
-        text_batch = create_batch(self.text_data_dict, batch_max_text_size)
+        audio_batch = self.create_batch(self.audio_data_dict, batch_max_sample_size)
+        text_batch = self.create_batch(self.text_data_dict, batch_max_text_size)
 
-    def create_batch(data_dict, batch_max_size):
+    def create_batch(self, data_dict, batch_max_size):
         batchs = []
         batch = []
         size_accum = 0
