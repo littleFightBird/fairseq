@@ -615,7 +615,7 @@ class HubertTextMTL(BaseFairseqModel):
         print(cfg.w2v_args)
         # 2. text encoder
         text_encoder_embedding = cls.build_embedding(
-            cfg, task.state.dictionaries["phoneme"], cfg.w2v_args.encoder_ffn_embed_dim, None
+            cfg, task.state.dictionaries["phoneme"], cfg.w2v_args["model"]["encoder_ffn_embed_dim"], None
         )
         text_encoder = MaskedTextEncoder(
             cfg,
