@@ -4,6 +4,7 @@ import numpy as np
 from fairseq.data import data_utils
 from fairseq.models.hubert.hubert_asr import HubertTextMTLConfig, HubertTextMTL
 import torch
+import random
 
 if __name__=='__main__':
     
@@ -36,7 +37,7 @@ if __name__=='__main__':
     task = OptimizingAlignmentTask(task_config)
     model = HubertTextMTL.build_model(config,task)
     audio_input = torch.randn((16,500))
-    lengths = [np.randint(450,500) for i in range(16)]
+    lengths = [random.randint(450,500) for i in range(16)]
     audio_mask = get_mask(audio_input, lengths)
     text_input =  [ [np.randint(364) for  i in range(500)] for i in range(16)]
     text_lengths = [500 for i in range]
