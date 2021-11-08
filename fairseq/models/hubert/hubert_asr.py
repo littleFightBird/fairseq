@@ -636,7 +636,7 @@ class HubertTextMTL(BaseFairseqModel):
         # embedding_aligner
         embedding_aligner = nn.Parameter(
             torch.FloatTensor(
-                (cfg.encoder_ffn_embed_dim, 
+                (cfg.w2v_args.model.encoder_ffn_embed_dim, 
                 len(task.state.dictionaries["phonome"]))
             )
         )
