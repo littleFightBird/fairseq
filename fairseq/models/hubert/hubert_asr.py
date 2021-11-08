@@ -466,7 +466,7 @@ class MaskedTextEncoder(BaseFairseqModel):
         self.token_embedding = self.build_embedding(cfg,dictionaries["phoneme"],cfg.w2v_args.model.encoder_embed_dim)
         # 2. text encoder
         self.MASK = task.MASK
-        print(cfg.text_encoder_layers)
+        print(cfg)
         self.encoder_layers = [ self.build_encoder_layer(cfg) for i in range(cfg.text_encoder_layers)]
         self.proj = nn.Linear(cfg.w2v_args.model.encoder_embed_dim, cfg.encoder_output_dim)
         self._dictionaries = dictionaries
@@ -609,8 +609,6 @@ class HubertTextMTL(BaseFairseqModel):
         """Build a new model instance."""
         # 1. audio encoder
         w2v_encoder = HubertEncoder(cfg, task.target_dictionary)
-        print("##########################################################################################")
-        print(cfg.w2v_args["model"]["encoder_ffn_embed_dim"])
         # 2. text encoder
         text_encoder_embedding = cls.build_embedding(
             cfg, task.state.dictionaries["phoneme"], cfg.w2v_args["model"]["encoder_ffn_embed_dim"], None
