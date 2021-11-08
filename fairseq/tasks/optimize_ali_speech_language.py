@@ -5,14 +5,18 @@
 # arxiv:
 import logging
 import os
+from random import shuffle
 import sys
 from typing import Dict, List, Optional, Tuple, Union
+from fairseq.dataclass import configs
 
 import numpy as np
 import sentencepiece as spm
 
 from dataclasses import dataclass, field
-from fairseq.data import Dictionary, AudioTextDataset
+from fairseq.data import Dictionary
+from fairseq.data.audio.audio_text_dataset import AudioDataset, TextDataset
+from fairseq.data.audio.multi_modality_dataset import MultiModalityDataset
 from fairseq.dataclass.configs import FairseqDataclass
 from fairseq.tasks import register_task
 from fairseq.tasks.fairseq_task import FairseqTask
@@ -100,17 +104,41 @@ class OptimizingAlignmentConfig(FairseqDataclass):
         default=False,
         metadata={"help": "pad audio to the longest one in the batch if true"},
     )
-    text_in_mask_ratio: float = field(
-        default=0.2,
-        metadata={"help":"mask text ratio"}
-    )
-    swap_embedding_ratio: float = field(
-        default=0.2,
-        metadata={"help":"the ratio of swap embedding from speech encoder and text encoder"}
-    )
-    swap_embedding_phoneme_aware: bool=field(
+    # text_in_mask_ratio: float = field(
+    #     default=0.2,
+    #     metadata={"help":"mask text ratio"}
+    # )
+    # swap_embedding_ratio: float = field(
+    #     default=0.2,
+    #     metadata={"help":"the ratio of swap embedding from speech encoder and text encoder"}
+    # )
+    # swap_embedding_phoneme_aware: bool=field(
+    #     default=True,
+    #     metadata={"help":"swap embedding with the phoneme limit"}
+    # )
+    shuffle: bool=field(
         default=True,
-        metadata={"help":"swap embedding with the phoneme limit"}
+        metadata={"help":"shuffle the dataset or not"}
+    )
+    fbank_bin:bool = field(
+        default=80,
+        metadata={"help": "fbank bins of the model"}
+    )
+    audio_max_token: int = field(
+        default=350000,
+        metadata={"help": "max token in batch for audio"}
+    )
+    audio_max_sentences: int = field(
+        default=350000,
+        metadata={"help": "max sentences in batch for audio"}
+    )
+    text_max_token: int = field(
+        default=350000,
+        metadata={"help": "max token in batch for text"}
+    )
+    text_max_sentences: int = field(
+        default=350000,
+        metadata={"help": "max sentences in batch for text"}
     )
 
 
@@ -171,33 +199,58 @@ class OptimizingAlignmentTask(FairseqTask):
         return self.cfg.label_dir
 
     def load_dataset(self, split:str, **kwargs) ->None:
-        manifest = f"{self.cfg.speech_data}/{split}.tsv"
-        text_only_data_set = f"{self.cfg.text_data}/{split}.tsv"
         bpe_model = f"{self.cfg.label_dir}/bpe_model/bpe.model"
         dicts = self.dictionaries()
         pad_list = [dict.pad() for dict in dicts]
         eos_list = [dict.eos() for dict in dicts]
 
         procs = [LabelEncoder(dicts["phoneme"]), SentencepiecesTokenizer(bpe_model) ]
-        paths = [
-            f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.labels
-        ]
-
-        # hubert v1: pad_audio=True, random_crop=False;
-        self.datasets[split] = AudioTextDataset(
-            manifest,
-            text_only_data_set,
+        audio_dataset = AudioDataset(
+            audio_path=self.cfg.speech_data,
             sample_rate=self.cfg.sample_rate,
-            label_paths=paths,
+            label_processors=procs,
             pad_list=pad_list,
             eos_list=eos_list,
-            label_processors=procs,
-            max_keep_sample_size=self.cfg.max_keep_size,
+            max_keep_sample_size=self.cfg.max_sample_size,
             min_keep_sample_size=self.cfg.min_sample_size,
-            max_sample_size=self.cfg.max_sample_size,
-            pad_audio=self.cfg.pad_audio,
+            shuffle=self.cfg.shuffle,
             normalize=self.cfg.normalize,
-            store_labels=False,
-            random_crop=self.cfg.random_crop,
-            single_target=self.cfg.single_target,
+            pad_audio=self.cfg.pad_audio,
+            fbank_bins=self.cfg.fbank_bin,
+            max_sample_size=self.cfg.max_keep_size,
+            max_tokens=self.cfg.audio_max_token,
+            max_sentences=self.cfg.audio_max_sentences
         )
+
+        text_dataset = TextDataset(
+            data_file_path=self.cfg.text_data,
+            max_text_num=self.cfg.max_sample_size,
+            min_text_num=self.cfg.min_sample_size,
+            data_process=procs,
+            shuffle=self.cfg.shuffle,
+            pad_list=pad_list,
+            max_tokens=self.cfg.text_max_token,
+            max_sentences=self.cfg.text_max_sentences
+        )
+
+        self.datasets[split] = MultiModalityDataset(
+            datasets=[audio_dataset,text_dataset]
+        )
+        # hubert v1: pad_audio=True, random_crop=False;
+        # self.datasets[split] = AudioTextDataset(
+        #     manifest,
+        #     text_only_data_set,
+        #     sample_rate=self.cfg.sample_rate,
+        #     label_paths=paths,
+        #     pad_list=pad_list,
+        #     eos_list=eos_list,
+        #     label_processors=procs,
+        #     max_keep_sample_size=self.cfg.max_keep_size,
+        #     min_keep_sample_size=self.cfg.min_sample_size,
+        #     max_sample_size=self.cfg.max_sample_size,
+        #     pad_audio=self.cfg.pad_audio,
+        #     normalize=self.cfg.normalize,
+        #     store_labels=False,
+        #     random_crop=self.cfg.random_crop,
+        #     single_target=self.cfg.single_target,
+        # )
