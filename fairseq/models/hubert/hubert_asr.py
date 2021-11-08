@@ -469,19 +469,19 @@ class MaskedTextEncoder(BaseFairseqModel):
         self.token_embedding = self.build_embedding(cfg,dictionaries["phoneme"],cfg.w2v_args.model.encoder_embed_dim)
         # 2. text encoder
         self.MASK = task.MASK
-        self.embedding_dim = cfg.w2v_args.encoder_embed_dim
-        self.dropout = cfg.w2v_args.dropout
+        self.embedding_dim = cfg.w2v_args.model.encoder_embed_dim
+        self.dropout = cfg.w2v_args.model.dropout
         self.encoder_layers = nn.ModuleList(
             [
                 TransformerSentenceEncoderLayer(
                     embedding_dim=self.embedding_dim,
-                    ffn_embedding_dim=cfg.w2v_args.encoder_ffn_embed_dim,
-                    num_attention_heads=cfg.w2v_args.encoder_attention_heads,
+                    ffn_embedding_dim=cfg.w2v_args.model.encoder_ffn_embed_dim,
+                    num_attention_heads=cfg.w2v_args.model.encoder_attention_heads,
                     dropout=self.dropout,
-                    attention_dropout=cfg.w2v_args.attention_dropout,
-                    activation_dropout=cfg.w2v_args.activation_dropout,
-                    activation_fn=cfg.w2v_args.activation_fn,
-                    layer_norm_first=cfg.w2v_args.layer_norm_first,
+                    attention_dropout=cfg.w2v_args.model.attention_dropout,
+                    activation_dropout=cfg.w2v_args.model.activation_dropout,
+                    activation_fn=cfg.w2v_args.model.activation_fn,
+                    layer_norm_first=cfg.w2v_args.model.layer_norm_first,
                 )
                 for _ in range(cfg.text_encoder_layers)
             ]
@@ -576,19 +576,19 @@ class HubertTextMTL(BaseFairseqModel):
         # 2. text encoder
         self.text_encoder = text_encoder
         # 4. shared encoder
-        self.embedding_dim = cfg.w2v_args.encoder_embed_dim
-        self.dropout = cfg.w2v_args.dropout
+        self.embedding_dim = cfg.w2v_args.model.encoder_embed_dim
+        self.dropout = cfg.w2v_args.model.dropout
         self.shared_encoder = nn.ModuleList(
             [
                 TransformerSentenceEncoderLayer(
                     embedding_dim=self.embedding_dim,
-                    ffn_embedding_dim=cfg.w2v_args.encoder_ffn_embed_dim,
-                    num_attention_heads=cfg.w2v_args.encoder_attention_heads,
+                    ffn_embedding_dim=cfg.w2v_args.model.encoder_ffn_embed_dim,
+                    num_attention_heads=cfg.w2v_args.model.encoder_attention_heads,
                     dropout=self.dropout,
-                    attention_dropout=cfg.w2v_args.attention_dropout,
-                    activation_dropout=cfg.w2v_args.activation_dropout,
-                    activation_fn=cfg.w2v_args.activation_fn,
-                    layer_norm_first=cfg.w2v_args.layer_norm_first,
+                    attention_dropout=cfg.w2v_args.model.attention_dropout,
+                    activation_dropout=cfg.w2v_args.model.activation_dropout,
+                    activation_fn=cfg.w2v_args.model.activation_fn,
+                    layer_norm_first=cfg.w2v_args.model.layer_norm_first,
                 )
                 for _ in range(cfg.shared_encoder_layer)
             ]
