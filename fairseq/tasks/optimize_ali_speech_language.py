@@ -104,18 +104,18 @@ class OptimizingAlignmentConfig(FairseqDataclass):
         default=False,
         metadata={"help": "pad audio to the longest one in the batch if true"},
     )
-    # text_in_mask_ratio: float = field(
-    #     default=0.2,
-    #     metadata={"help":"mask text ratio"}
-    # )
-    # swap_embedding_ratio: float = field(
-    #     default=0.2,
-    #     metadata={"help":"the ratio of swap embedding from speech encoder and text encoder"}
-    # )
-    # swap_embedding_phoneme_aware: bool=field(
-    #     default=True,
-    #     metadata={"help":"swap embedding with the phoneme limit"}
-    # )
+    text_in_mask_ratio: float = field(
+        default=0.2,
+        metadata={"help":"mask text ratio"}
+    )
+    swap_embedding_ratio: float = field(
+        default=0.2,
+        metadata={"help":"the ratio of swap embedding from speech encoder and text encoder"}
+    )
+    swap_embedding_phoneme_aware: bool=field(
+        default=True,
+        metadata={"help":"swap embedding with the phoneme limit"}
+    )
     shuffle: bool=field(
         default=True,
         metadata={"help":"shuffle the dataset or not"}
