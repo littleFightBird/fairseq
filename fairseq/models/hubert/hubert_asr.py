@@ -29,7 +29,7 @@ from fairseq.distributed import fsdp_wrap
 from fairseq.models.masked_lm import MaskedLMEncoder
 from fairseq.tasks.optimize_ali_speech_language import OptimizingAlignmentTask
 from fairseq.data.data_utils import compute_mask_indices
-from fairseq.models.wav2vec.wav2vec2 import TransformerEncoder
+from fairseq.models.wav2vec.wav2vec2 import TransformerSentenceEncoderLayer
 
 @dataclass
 class HubertAsrConfig(FairseqDataclass):
@@ -469,7 +469,23 @@ class MaskedTextEncoder(BaseFairseqModel):
         self.token_embedding = self.build_embedding(cfg,dictionaries["phoneme"],cfg.w2v_args.model.encoder_embed_dim)
         # 2. text encoder
         self.MASK = task.MASK
-        self.encoder_layers = [ self.build_encoder_layer(cfg) for i in range(cfg.text_encoder_layers)]
+        self.embedding_dim = cfg.w2v_args.encoder_embed_dim
+        self.dropout = cfg.w2v_args.dropout
+        self.encoder_layers = nn.ModuleList(
+            [
+                TransformerSentenceEncoderLayer(
+                    embedding_dim=self.embedding_dim,
+                    ffn_embedding_dim=cfg.w2v_args.encoder_ffn_embed_dim,
+                    num_attention_heads=cfg.w2v_args.encoder_attention_heads,
+                    dropout=self.dropout,
+                    attention_dropout=cfg.w2v_args.attention_dropout,
+                    activation_dropout=cfg.w2v_args.activation_dropout,
+                    activation_fn=cfg.w2v_args.activation_fn,
+                    layer_norm_first=cfg.w2v_args.layer_norm_first,
+                )
+                for _ in range(cfg.text_encoder_layers)
+            ]
+        )
         self.proj = nn.Linear(cfg.w2v_args.model.encoder_embed_dim, cfg.encoder_output_dim)
         self._dictionaries = dictionaries
         self._mask_prob = cfg.text_encoder_mask_prob
@@ -531,19 +547,6 @@ class MaskedTextEncoder(BaseFairseqModel):
             utils.load_embedding(embed_dict, dictionary, emb)
         return emb
 
-    def build_encoder_layer(self, cfg):
-        print(cfg.w2v_args)
-        cfg.encoder = cfg.w2v_args
-        layer = transformer_layer.TransformerEncoderLayerBase(cfg)
-        checkpoint = cfg.checkpoint_activations
-        if checkpoint:
-            offload_to_cpu = cfg.offload_activations
-            layer = checkpoint_wrapper(layer, offload_to_cpu=offload_to_cpu)
-        # if we are checkpointing, enforce that FSDP always wraps the
-        # checkpointed layer, regardless of layer size
-        min_params_to_wrap = cfg.min_params_to_wrap if not checkpoint else 0
-        layer = fsdp_wrap(layer, min_num_params=min_params_to_wrap)
-        return layer
 
     def get_normalized_probs(self, net_output, log_probs):
         """Get normalized probabilities (or log probs) from a net's output."""
@@ -573,7 +576,23 @@ class HubertTextMTL(BaseFairseqModel):
         # 2. text encoder
         self.text_encoder = text_encoder
         # 4. shared encoder
-        self.shared_encoder = TransformerEncoder(arg_overrides)
+        self.embedding_dim = cfg.w2v_args.encoder_embed_dim
+        self.dropout = cfg.w2v_args.dropout
+        self.shared_encoder = nn.ModuleList(
+            [
+                TransformerSentenceEncoderLayer(
+                    embedding_dim=self.embedding_dim,
+                    ffn_embedding_dim=cfg.w2v_args.encoder_ffn_embed_dim,
+                    num_attention_heads=cfg.w2v_args.encoder_attention_heads,
+                    dropout=self.dropout,
+                    attention_dropout=cfg.w2v_args.attention_dropout,
+                    activation_dropout=cfg.w2v_args.activation_dropout,
+                    activation_fn=cfg.w2v_args.activation_fn,
+                    layer_norm_first=cfg.w2v_args.layer_norm_first,
+                )
+                for _ in range(cfg.shared_encoder_layer)
+            ]
+        )
         # 5. embedding aligner
         self.embedding_aligner = embedding_aligner
         # 6. ctc proj
