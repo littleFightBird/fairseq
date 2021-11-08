@@ -532,6 +532,8 @@ class MaskedTextEncoder(BaseFairseqModel):
         return emb
 
     def build_encoder_layer(self, cfg):
+        print(cfg.w2v_args)
+        cfg.encoder = cfg.w2v_args
         layer = transformer_layer.TransformerEncoderLayerBase(cfg)
         checkpoint = cfg.checkpoint_activations
         if checkpoint:
