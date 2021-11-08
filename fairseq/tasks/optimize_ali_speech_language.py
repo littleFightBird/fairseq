@@ -178,7 +178,7 @@ class OptimizingAlignmentTask(FairseqTask):
         pad_list = [dict.pad() for dict in dicts]
         eos_list = [dict.eos() for dict in dicts]
 
-        procs = [LabelEncoder(dicts[key]) for key in dicts.keys() if key!= "word" else SentencepiecesTokenizer(bpe_model) ]
+        procs = [LabelEncoder(dicts["phoneme"]), SentencepiecesTokenizer(bpe_model) ]
         paths = [
             f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.labels
         ]
