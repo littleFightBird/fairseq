@@ -642,7 +642,7 @@ class HubertTextMTL(BaseFairseqModel):
         )
 
         # ctc proj
-        ctc_proj = nn.Linear(cfg.encoder_output_dim, len(task.state.dictionaries["bpe"]))
+        ctc_proj = nn.Linear(cfg.w2v_args.model.encoder_ffn_embed_dim, len(task.state.dictionaries["bpe"]))
         return cls(cfg, w2v_encoder, text_encoder, embedding_aligner, ctc_proj)
 
     def forward(
