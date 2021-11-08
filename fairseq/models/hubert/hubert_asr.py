@@ -463,7 +463,7 @@ class MaskedTextEncoder(BaseFairseqModel):
     ):
         super().__init__()
         # 1. token embedding
-        self.token_embedding = self.build_embedding(cfg,dictionaries["phoneme"],cfg.w2v_args.encoder_embed_dim)
+        self.token_embedding = self.build_embedding(cfg,dictionaries["phoneme"],cfg.w2v_args.model.encoder_embed_dim)
         # 2. text encoder
         self.MASK = task.MASK
         self.encoder_layers = [ self.build_encoder_layer(cfg) for i in range(cfg.text_encoder_layers)]
@@ -556,7 +556,6 @@ class HubertTextMTL(BaseFairseqModel):
         cfg: HubertTextMTLConfig, 
         w2v_encoder: BaseFairseqModel, 
         text_encoder:BaseFairseqModel, 
-        decoder: BaseFairseqModel,
         embedding_aligner,
         ctc_proj
     ):
@@ -566,8 +565,6 @@ class HubertTextMTL(BaseFairseqModel):
         self.w2v_encoder = w2v_encoder
         # 2. text encoder
         self.text_encoder = text_encoder
-        # 3. decoder
-        self.decoder = decoder
         # 4. shared encoder
         self.shared_encoder = [ self.build_encoder_layer(cfg) for i in range(cfg.shared_encoder_layer)]
         # 5. embedding aligner
@@ -612,7 +609,7 @@ class HubertTextMTL(BaseFairseqModel):
         # 1. audio encoder
         w2v_encoder = HubertEncoder(cfg, task.target_dictionary)
         print("##########################################################################################")
-        print(cfg.w2v_args)
+        print(cfg.w2v_args["model"]["encoder_ffn_embed_dim"])
         # 2. text encoder
         text_encoder_embedding = cls.build_embedding(
             cfg, task.state.dictionaries["phoneme"], cfg.w2v_args["model"]["encoder_ffn_embed_dim"], None
@@ -622,15 +619,7 @@ class HubertTextMTL(BaseFairseqModel):
             task,
             task.state.dictionaries
         )
-        # 3. decoder
-        decoder_embedding = cls.build_embedding(
-            cfg, task.state.dictionaries["bpe"], cfg.decoder_embed_dim, None
-        )
-        decoder = TransformerDecoder(
-            cfg, 
-            task.target_dictionary,
-            decoder_embedding
-        )
+
         # embedding_aligner
         embedding_aligner = nn.Parameter(
             torch.FloatTensor(
@@ -641,7 +630,7 @@ class HubertTextMTL(BaseFairseqModel):
 
         # ctc proj
         ctc_proj = nn.Linear(cfg.encoder_output_dim, len(task.state.dictionaries["bpe"]))
-        return cls(cfg, w2v_encoder, text_encoder, decoder, embedding_aligner, ctc_proj)
+        return cls(cfg, w2v_encoder, text_encoder, embedding_aligner, ctc_proj)
 
     def forward(
         self, 
