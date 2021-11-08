@@ -39,7 +39,7 @@ if __name__=='__main__':
     audio_input = torch.randn((16,500))
     lengths = [random.randint(450,500) for i in range(16)]
     audio_mask = get_mask(audio_input, lengths)
-    text_input =  [ [random.randint(0,364) for  i in range(500)] for i in range(16)]
+    text_input =  [ torch.from_numpy(np.array([random.randint(0,364) for  i in range(500)])) for i in range(16)]
     text_lengths = [500 for i in range(16)]
     text_input, text_lengths, _ = collater_seq_label(text_input, task.dictionaries["phoneme"].pad())
     text_mask = get_mask(text_input, text_lengths)
