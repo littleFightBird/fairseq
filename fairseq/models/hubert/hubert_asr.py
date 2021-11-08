@@ -632,7 +632,7 @@ class HubertTextMTL(BaseFairseqModel):
             task,
             task.state.dictionaries
         )
-
+        print(task.state.dictionaries)
         # embedding_aligner
         embedding_aligner = nn.Parameter(
             torch.FloatTensor(
