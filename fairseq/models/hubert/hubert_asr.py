@@ -468,7 +468,7 @@ class MaskedTextEncoder(BaseFairseqModel):
         # 2. text encoder
         self.MASK = task.MASK
         self.encoder_layers = [ self.build_encoder_layer(cfg) for i in range(cfg.text_encoder_layers)]
-        self.proj = nn.Linear(cfg.w2v_args.model.encoder_embed_dim, cfg.encoder_output_dim))
+        self.proj = nn.Linear(cfg.w2v_args.model.encoder_embed_dim, cfg.encoder_output_dim)
         self._dictionaries = dictionaries
         self._mask_prob = cfg.text_encoder_mask_prob
         self._apply_mask = cfg.text_encoder_apply_mask
