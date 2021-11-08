@@ -128,8 +128,8 @@ def register_model(name, dataclass=None):
     """
 
     def register_model_cls(cls):
-        print(MODEL_REGISTRY)
         if name in MODEL_REGISTRY:
+            print(MODEL_REGISTRY["hubert_ctc"])
             raise ValueError("Cannot register duplicate model ({})".format(name))
         if not issubclass(cls, BaseFairseqModel):
             raise ValueError(
