@@ -1,3 +1,4 @@
+from fairseq import data
 from fairseq.tasks.optimize_ali_speech_language import OptimizingAlignmentConfig, OptimizingAlignmentTask
 import numpy as np
 from fairseq.data import data_utils
@@ -24,7 +25,8 @@ if __name__=='__main__':
         return padding_mask
 
     config = HubertTextMTLConfig(
-        w2v_path="/home/v-zhuoyao/workspace/fairseq_master/examples/zhuoyao_optimizing_ali/s0/exp/hubert_pretrain/hubert_base_ls960.pt"
+        w2v_path="/home/v-zhuoyao/workspace/fairseq_master/examples/zhuoyao_optimizing_ali/s0/exp/hubert_pretrain/hubert_base_ls960.pt",
+        normalize=False,
     )
     task_config = OptimizingAlignmentConfig(
         speech_data="/home/v-zhuoyao/workspace/fairseq_master/examples/zhuoyao_optimizing_ali/s0/data/librispeech/train_960/data_format.train",
