@@ -29,6 +29,7 @@ from fairseq.distributed import fsdp_wrap
 from fairseq.models.masked_lm import MaskedLMEncoder
 from fairseq.tasks.optimize_ali_speech_language import OptimizingAlignmentTask
 from fairseq.data.data_utils import compute_mask_indices
+from fairseq.models.wav2vec.wav2vec2 import TransformerEncoder
 
 @dataclass
 class HubertAsrConfig(FairseqDataclass):
@@ -565,12 +566,14 @@ class HubertTextMTL(BaseFairseqModel):
     ):
         super().__init__()
         self.cfg = cfg
+        arg_overrides = cfg.w2v_args.model.copy()
+        arg_overrides["encoder_layers"] = cfg.shared_encoder_layer
         # 1. audio encoder
         self.w2v_encoder = w2v_encoder
         # 2. text encoder
         self.text_encoder = text_encoder
         # 4. shared encoder
-        self.shared_encoder = [ self.build_encoder_layer(cfg) for i in range(cfg.shared_encoder_layer)]
+        self.shared_encoder = TransformerEncoder(arg_overrides)
         # 5. embedding aligner
         self.embedding_aligner = embedding_aligner
         # 6. ctc proj
@@ -583,20 +586,9 @@ class HubertTextMTL(BaseFairseqModel):
         super().upgrade_state_dict_named(state_dict, name)
         return state_dict
 
-    def build_encoder_layer(self, cfg):
-        layer = transformer_layer.TransformerEncoderLayerBase(cfg)
-        checkpoint = cfg.checkpoint_activations
-        if checkpoint:
-            offload_to_cpu = cfg.offload_activations
-            layer = checkpoint_wrapper(layer, offload_to_cpu=offload_to_cpu)
-        # if we are checkpointing, enforce that FSDP always wraps the
-        # checkpointed layer, regardless of layer size
-        min_params_to_wrap = cfg.min_params_to_wrap if not checkpoint else 0
-        layer = fsdp_wrap(layer, min_num_params=min_params_to_wrap)
-        return layer
-
     @classmethod
     def build_embedding(cls, args, dictionary, embed_dim, path=None):
+        
         num_embeddings = len(dictionary)
         padding_idx = dictionary.pad()
 
