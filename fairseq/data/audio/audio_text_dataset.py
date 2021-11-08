@@ -60,8 +60,7 @@ def load_paired_data(manifest_path, max_keep, min_keep):
 
 def load_text_only_data(text_only_data_set_path, max_text, min_text):
     n_long, n_short = 0.0 
-    sizes = []
-    ind_offset = inds[-1]+1
+    data_dict, inds, sizes = [],[],[]
     with open(text_only_data_set_path) as f:
         for  ind, line in enumerate(f):
             word = line.strip().split(" ")
@@ -70,7 +69,7 @@ def load_text_only_data(text_only_data_set_path, max_text, min_text):
                 n_short+=1
             if max_text is not None and sz > max_text:
                 n_long+=1
-            inds.append(ind+ind_offset)
+            inds.append(ind)
             data_dict.append(
                 {
                     "word": word,
@@ -79,7 +78,7 @@ def load_text_only_data(text_only_data_set_path, max_text, min_text):
                 }
             )
             sizes.append(sz)
-    tot += ind + 1
+    tot = ind + 1
     logger.info(
         (
             f"load text only data"

@@ -128,6 +128,7 @@ class OptimizingAlignmentConfig(FairseqDataclass):
         default=350000,
         metadata={"help": "max sentences in batch for text"}
     )
+    
 
 
 @register_task("optimizing_alignment_speech_language", dataclass=OptimizingAlignmentConfig)
@@ -144,7 +145,6 @@ class OptimizingAlignmentTask(FairseqTask):
         logger.info(f"HubertPretrainingTask Config {cfg}")
 
         self.cfg = cfg
-        self.fine_tuning = cfg.fine_tuning
 
         self.state.add_factory("dictionaries", self.load_dictionaries)
 
