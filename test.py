@@ -23,7 +23,9 @@ if __name__=='__main__':
             padding_mask[i,  length[i]:] = True
         return padding_mask
 
-    config = HubertTextMTLConfig()
+    config = HubertTextMTLConfig(
+        w2v_path="/home/v-zhuoyao/workspace/fairseq_master/examples/zhuoyao_optimizing_ali/s0/exp/hubert_pretrain/hubert_base_ls960.pt"
+    )
     task_config = OptimizingAlignmentConfig(
         speech_data="/home/v-zhuoyao/workspace/fairseq_master/examples/zhuoyao_optimizing_ali/s0/data/librispeech/train_960/data_format.train",
         text_data="/home/v-zhuoyao/workspace/fairseq_master/examples/zhuoyao_optimizing_ali/s0/data/librispeech/text_only_data/librispeech-lm-norm.txt",
