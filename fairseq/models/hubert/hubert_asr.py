@@ -373,6 +373,14 @@ class HubertEncoder(FairseqEncoder):
     def upgrade_state_dict_named(self, state_dict, name):
         return state_dict
 
+    def get_normalized_probs(self, net_output, log_probs):
+        """Get normalized probabilities (or log probs) from a net's output."""
+
+        logits = net_output["encoder_out"]
+        if log_probs:
+            return utils.log_softmax(logits.float(), dim=-1)
+        else:
+            return utils.softmax(logits.float(), dim=-1)
 
 def Embedding(num_embeddings, embedding_dim, padding_idx):
     m = nn.Embedding(num_embeddings, embedding_dim, padding_idx=padding_idx)
@@ -479,7 +487,7 @@ class MaskedTextEncoder(BaseFairseqModel):
         if self.apply_mask:
             prev_phoneme = self.apply_mask(prev_phoneme, self.dictionaries["phoneme"])
         # 2. embedding
-        pre_phoneme = self.token_embedding(prev_phoneme)
+        prev_phoneme = self.token_embedding(prev_phoneme)
         # 3. encoder
         for transformer in self.encoder_layers:
             prev_phoneme = transformer(prev_phoneme, prev_phoneme_mask)
@@ -532,6 +540,15 @@ class MaskedTextEncoder(BaseFairseqModel):
         min_params_to_wrap = cfg.min_params_to_wrap if not checkpoint else 0
         layer = fsdp_wrap(layer, min_num_params=min_params_to_wrap)
         return layer
+
+    def get_normalized_probs(self, net_output, log_probs):
+        """Get normalized probabilities (or log probs) from a net's output."""
+
+        logits = net_output["encoder_out"]
+        if log_probs:
+            return utils.log_softmax(logits.float(), dim=-1)
+        else:
+            return utils.softmax(logits.float(), dim=-1)
 
 @register_model("hubert_text_mtl")
 class HubertTextMTL(BaseFairseqModel):
@@ -631,24 +648,20 @@ class HubertTextMTL(BaseFairseqModel):
         audio_source, 
         padding_mask,
         prev_phoneme,
-        prev_bpe,
         phoneme_padding_mask,
-        bpe_padding_mask,
         _type: str = "speech",
     ):
         if _type == "speech":
             return self.forward_speech(
                 audio_source,
                 padding_mask,
-                prev_bpe,
-                bpe_padding_mask
+                prev_phoneme,
+                phoneme_padding_mask
             )
         else:
             return self.forward_text(
                 prev_phoneme,
-                phoneme_padding_mask,
-                prev_bpe,
-                bpe_padding_mask
+                phoneme_padding_mask
             )
 
     def swap_embedding(self,audio_embedding, text_embedding, accum_alignment):
@@ -700,7 +713,7 @@ class HubertTextMTL(BaseFairseqModel):
         # assert audio input is feature
         assert(len(audio_source)==3)
         encoder_out = self.w2v_encoder(audio_source, padding_mask, False)
-        
+        padding_mask = padding_mask[:, :3:, ]
         # 2. text_encoder 
         text_encoder_out = self.text_encoder(prev_phoneme,phoneme_padding_mask)
         # 3. text_encoder -> swap embedding
@@ -723,7 +736,9 @@ class HubertTextMTL(BaseFairseqModel):
         return {
             "ctc_prob": x,
             "mlm_prob": xt,
-            "final_ctc_prob": out
+            "final_ctc_prob": out,
+            "phoneme_padding_mask": padding_mask,
+            
         }
 
 
@@ -746,5 +761,15 @@ class HubertTextMTL(BaseFairseqModel):
         out = self.proj(out)
         return {
             "mlm_prob": x,
-            "final_ctc_prob": out
+            "final_ctc_prob": out,
+            "phoneme_padding_mask": phoneme_padding_mask
         }
+
+    def get_normalized_probs(self, net_output, log_probs):
+        """Get normalized probabilities (or log probs) from a net's output."""
+
+        logits = net_output
+        if log_probs:
+            return utils.log_softmax(logits.float(), dim=-1)
+        else:
+            return utils.softmax(logits.float(), dim=-1)
