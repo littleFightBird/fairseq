@@ -466,6 +466,7 @@ class MaskedTextEncoder(BaseFairseqModel):
         self.token_embedding = self.build_embedding(cfg,dictionaries["phoneme"],cfg.w2v_args.model.encoder_embed_dim)
         # 2. text encoder
         self.MASK = task.MASK
+        print(cfg.text_encoder_layers)
         self.encoder_layers = [ self.build_encoder_layer(cfg) for i in range(cfg.text_encoder_layers)]
         self.proj = nn.Linear(cfg.w2v_args.model.encoder_embed_dim, cfg.encoder_output_dim)
         self._dictionaries = dictionaries
