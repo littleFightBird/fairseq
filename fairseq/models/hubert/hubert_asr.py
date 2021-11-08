@@ -503,7 +503,7 @@ class MaskedTextEncoder(BaseFairseqModel):
     ):
         # 1. apply mask
         if self.apply_mask:
-            prev_phoneme = self.apply_mask(prev_phoneme, self.dictionaries["phoneme"])
+            prev_phoneme = self.apply_mask(prev_phoneme, self._dictionaries["phoneme"])
         # 2. embedding
         prev_phoneme = self.token_embedding(prev_phoneme)
         # 3. encoder
