@@ -713,6 +713,7 @@ class HubertTextMTL(BaseFairseqModel):
     ):
         # 1. audio encoder
         # assert audio input is feature
+        print(audio_source.shape)
         assert(len(audio_source)==3)
         encoder_out = self.w2v_encoder(audio_source, padding_mask, False)
         padding_mask = padding_mask[:, :3:, ]
