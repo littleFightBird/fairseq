@@ -450,7 +450,7 @@ class HubertTextMTLConfig(MaskedTextEncoderConfig):
         default=0,
         metadata={"help": "the probability of embedding swapping"}
     )
-    swap_embedding_phoneme_aware = field(
+    swap_embedding_phoneme_aware: bool = field(
         default=True,
         metadata={"help": "swap embedding with phoneme aware"}
     )
