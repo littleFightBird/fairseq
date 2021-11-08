@@ -59,9 +59,6 @@ class OptimizingAlignmentConfig(FairseqDataclass):
     text_data: str = field(
         default=MISSING, metadata={"help": "path to text only data directory"}
     )
-    vocab_size: int = field(
-        default=MISSING, metadata={"help": "word vocabulary size"}
-    )
     label_dir: str = field(
         default=MISSING, metadata={"help": "path to label"}
     )

@@ -39,7 +39,7 @@ def load_paired_data(manifest_path, max_keep, min_keep):
                         "path": items[2].split(" ")[0],
                         "phoneme": items[3].split(" ")[0:-1],
                         "word": items[4].split(" ")[0:-1],
-                        "size": sz
+                        "size": sz,
                         "style": "paired"
                     }
                 )
