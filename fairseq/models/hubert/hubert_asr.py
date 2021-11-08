@@ -285,7 +285,7 @@ class HubertEncoder(FairseqEncoder):
                 cfg.w2v_args = w2v_args = convert_namespace_to_omegaconf(
                     w2v_args
                 )
-        print(cfg.normalize,w2v_args.task.normalize)
+        print(cfg.normalize==True)
         assert cfg.normalize == w2v_args.task.normalize, (
             "Fine-tuning works best when data normalization is the same. "
             "Please check that --normalize is set or unset for "
