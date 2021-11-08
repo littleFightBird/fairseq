@@ -285,7 +285,6 @@ class HubertEncoder(FairseqEncoder):
                 cfg.w2v_args = w2v_args = convert_namespace_to_omegaconf(
                     w2v_args
                 )
-        print(cfg.normalize==False)
         assert cfg.normalize == w2v_args.task.normalize, (
             "Fine-tuning works best when data normalization is the same. "
             "Please check that --normalize is set or unset for "
@@ -615,7 +614,7 @@ class HubertTextMTL(BaseFairseqModel):
 
         # 2. text encoder
         text_encoder_embedding = cls.build_embedding(
-            cfg, task.state.dictionaries["phoneme"], cfg.text_encoder_embed_dim, None
+            cfg, task.state.dictionaries["phoneme"], cfg.w2v_args.encoder_ffn_embed_dim, None
         )
         text_encoder = MaskedTextEncoder(
             cfg,
