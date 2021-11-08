@@ -395,7 +395,11 @@ def Linear(in_features, out_features, bias=True):
         nn.init.constant_(m.bias, 0.0)
     return m
 
-class MaskedTextEncoderConfig(HubertCtcConfig):
+
+
+@dataclass
+class HubertTextMTLConfig(HubertCtcConfig):
+    # text
     text_encoder_layers: int = field(
         default=8, metadata={"help": "num encoder layers in the text encoder"}
     )
@@ -434,9 +438,7 @@ class MaskedTextEncoderConfig(HubertCtcConfig):
             "help": "min space between spans (if no overlap is enabled)"
         },
     )
-
-@dataclass
-class HubertTextMTLConfig(MaskedTextEncoderConfig):
+    # model
     shared_encoder_layer: int = field(
         default=3,
         metadata={"help": "the number of shared encoder layers"},
