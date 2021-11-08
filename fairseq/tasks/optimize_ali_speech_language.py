@@ -139,7 +139,7 @@ class OptimizingAlignmentTask(FairseqTask):
         self,
         cfg: OptimizingAlignmentConfig
     ) -> None:
-        super().__init__()
+        super().__init__(cfg)
         logger.info(f"current directory is {os.getcwd()}")
         logger.info(f"HubertPretrainingTask Config {cfg}")
 
