@@ -518,7 +518,7 @@ class MaskedTextEncoder(BaseFairseqModel):
 
     def apply_mask(self, x, padding_mask, target_list):
         B, T = x.shape
-        if self.mask_prob > 0:
+        if self._mask_prob > 0:
             mask_indices = compute_mask_indices(
                 (B, T),
                 padding_mask,
