@@ -639,16 +639,12 @@ class HubertTextMTL(BaseFairseqModel):
             task.state.dictionaries
         )
         # embedding_aligner
-        print("#################################################")
-        print(cfg.w2v_args.model.encoder_ffn_embed_dim)
-        print(len(task.phoneme_dictionary))
         embedding_aligner = nn.Parameter(
             torch.FloatTensor(
                 (cfg.w2v_args.model.encoder_ffn_embed_dim, 
                 len(task.phoneme_dictionary))
             )
         )
-        print(embedding_aligner.shape)
 
         # ctc proj
         ctc_proj = nn.Linear(cfg.w2v_args.model.encoder_ffn_embed_dim, len(task.state.dictionaries["bpe"]))
@@ -762,8 +758,7 @@ class HubertTextMTL(BaseFairseqModel):
         x = x_dict["encoder_out"]
         # 4. audio encoder -> embedding aligner -> ctc prob
         #    text encoder -> embedding aligner -> mlm prob
-        print(x.shape)
-        print(self.embedding_aligner.data.shape)
+        print(self.embedding_aligner)
         x_out = nn.functional.softmax(nn.functional.pairwise_distance(x,self.embedding_aligner.data), -1)
         # 5. audio encoder -> shared encoder
         for transformer in self.shared_encoder:
