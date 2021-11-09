@@ -50,3 +50,4 @@ if __name__=='__main__':
         text_mask,
         _type="speech"
     )
+    print(output)
