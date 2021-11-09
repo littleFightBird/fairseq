@@ -648,7 +648,7 @@ class HubertTextMTL(BaseFairseqModel):
                 len(task.phoneme_dictionary))
             )
         )
-        print(embedding_aligner)
+        print(embedding_aligner.shape)
 
         # ctc proj
         ctc_proj = nn.Linear(cfg.w2v_args.model.encoder_ffn_embed_dim, len(task.state.dictionaries["bpe"]))
