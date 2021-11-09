@@ -721,6 +721,24 @@ class HubertTextMTL(BaseFairseqModel):
         
         padding_mask = x_dict["encoder_padding_mask"]
         print(xt.shape)
+        # w2v conv structure
+        '''
+            notice!!!!! 
+            if we change the structure of w2v conv, we should change the downsample here
+            this downsample is compute as follow:
+                w2v conv structure [(512,10,5)] + [(512,3,2)] * 4 + [(512,2,2)] * 2
+            the field we can seen is
+                { (x[i]-1)*2+2 = x[i-1] }*2
+                { (x[i]-1)*2+3 = x[i-1] }*4
+                { (x[i]-1)*5+10 = x[i-1] }*1
+            then we get 400 which is the same as feature extraction of fbank
+            then we can compute overlap from the top (512,3,2)
+                { (x[i]-1)*2+3 = x[i-1] }*4
+                { (x[i]-1)*5+10 = x[i-1] }*1
+            finally we get 80 and ( 400 - 80 ) = 320 = 160 * 2,
+            so the conv structure can map to the kaldi fbank feature by the kaldi fbank
+            feature downsampling of twice
+        '''
         xt = xt[:,:2:]
         phoneme_padding_mask = phoneme_padding_mask[:,:2:]
         # 2. text_encoder 
@@ -729,7 +747,7 @@ class HubertTextMTL(BaseFairseqModel):
         self.swap_embedding(
             x_dict["encoder_out"], 
             xt["encoder_out"],
-            self.get_accum_from_phoneme_seq(xt, phoneme_padding_mask)
+            self.get_accum_from_phoneme_seq(xt["encoder_out"], phoneme_padding_mask)
         )
         x = x_dict["encoder_out"]
         xt = xt["encoder_out"]
