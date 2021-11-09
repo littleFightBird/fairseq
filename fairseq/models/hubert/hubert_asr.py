@@ -724,10 +724,11 @@ class HubertTextMTL(BaseFairseqModel):
         # 2. text_encoder 
         text_encoder_out = self.text_encoder(prev_phoneme,phoneme_padding_mask)
         # 3. text_encoder -> swap embedding
+        print(phoneme_padding_mask)
         self.swap_embedding(
             encoder_out["encoder_out"], 
             text_encoder_out["encoder_out"],
-            self.get_accum_from_phoneme_seq(prev_phoneme)
+            self.get_accum_from_phoneme_seq(prev_phoneme, phoneme_padding_mask)
         )
         x = encoder_out["encoder_out"]
         xt = text_encoder_out["encoder_out"]
