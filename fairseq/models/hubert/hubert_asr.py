@@ -339,7 +339,8 @@ class HubertEncoder(FairseqEncoder):
 
         with torch.no_grad() if not ft else contextlib.ExitStack():
             x, padding_mask = self.w2v_model.extract_features(**w2v_args)
-
+            print("after extract features")
+            print(x.shape)
             if tbc:
                 # B x T x C -> T x B x C
                 x = x.transpose(0, 1)
@@ -731,7 +732,7 @@ class HubertTextMTL(BaseFairseqModel):
         xt = self.text_encoder(xt,phoneme_padding_mask)
         # 3. text_encoder -> swap embedding
         self.swap_embedding(
-            x["encoder_out"], 
+            x_dict["encoder_out"], 
             xt["encoder_out"],
             self.get_accum_from_phoneme_seq(xt, phoneme_padding_mask)
         )
