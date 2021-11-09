@@ -675,6 +675,8 @@ class HubertTextMTL(BaseFairseqModel):
         # audio_embedding is B*T*D 
         # text_embedding is B*T*D
         # assert the length of audio embedding is the same as text embedding
+        print(audio_embedding.shape)
+        print(text_embedding.shape)
         assert(audio_embedding.shape[1] == text_embedding.shape[1])
         # building mask
         bsz = audio_embedding.shape[0]
@@ -705,7 +707,7 @@ class HubertTextMTL(BaseFairseqModel):
         accum_lists = []
         for i in range(bsz):
             accum = [indice+1 for indice,j in enumerate(range(phoneme_seq[i].shape[0])) 
-                if phoneme_padding_mask[i][j] == True and phoneme_seq[i][j]!=phoneme_seq[i][j+1] ]
+                if phoneme_padding_mask[i][j] == False and phoneme_seq[i][j]!=phoneme_seq[i][j+1] ]
             accum_lists.append(accum)
         return accum_lists
     
