@@ -686,9 +686,7 @@ class HubertTextMTL(BaseFairseqModel):
                 print(indices)
                 for index in indices:
                     start,end = accum_alignment[i][index-1], accum_alignment[i][index]
-                    print(start,end)
-                    print(mask.shape)
-                    mask[i][start:end] = 0
+                    mask[start:end] = 0
             else:
                 mask = (
                     torch.randn(
