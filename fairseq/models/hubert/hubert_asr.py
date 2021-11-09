@@ -697,9 +697,6 @@ class HubertTextMTL(BaseFairseqModel):
                     ).uniform() > self.swap_embedding_ratio
                 ).float()
             mask = mask.unsqueeze(1).expand(mask.shape[0],channel_size)
-            print(text_embedding.shape)
-            print(audio_embedding.shape)
-            print(mask.shape)
             text_embedding_tmp = text_embedding[i] * mask + audio_embedding[i] * (1 - mask)
             audio_embedding[i] = audio_embedding[i] * mask + text_embedding[i] * (1 - mask)
             text_embedding[i] = text_embedding_tmp
@@ -753,8 +750,6 @@ class HubertTextMTL(BaseFairseqModel):
         # for swapping embedding we do not mask the input
         xt = self.text_encoder(xt,phoneme_padding_mask, apply_mask=False )
         # 3. text_encoder -> swap embedding
-        print(x_dict["encoder_out"].shape)
-        print(xt["encoder_out"].shape)
         self.swap_embedding(
             x_dict["encoder_out"], 
             xt["encoder_out"],
@@ -763,6 +758,8 @@ class HubertTextMTL(BaseFairseqModel):
         x = x_dict["encoder_out"]
         # 4. audio encoder -> embedding aligner -> ctc prob
         #    text encoder -> embedding aligner -> mlm prob
+        print(x.shape)
+        print(self.embedding_aligner.shape)
         x_out = nn.functional.softmax(nn.functional.pairwise_distance(x,self.embedding_aligner), -1)
         # 5. audio encoder -> shared encoder
         for transformer in self.shared_encoder:
