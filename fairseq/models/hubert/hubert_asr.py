@@ -346,8 +346,8 @@ class HubertEncoder(FairseqEncoder):
 
         x = self.final_dropout(x)
 
-        if self.proj:
-            x_ctc = self.proj(x)
+        # if self.proj:
+        #     x_ctc = self.proj(x)
 
         return {
             "encoder_out": x,  # T x B x C
@@ -756,6 +756,8 @@ class HubertTextMTL(BaseFairseqModel):
         x_out = nn.functional.softmax(torch.cdist(x,self.embedding_aligner), -1)
         print(x_out.shape)
         # 5. audio encoder -> shared encoder
+        print(x)
+        print(x_dict["encoder_padding_mask"])
         for transformer in self.shared_encoder:
             x = transformer(x, x_dict["encoder_padding_mask"])
         x = self.proj(x)
