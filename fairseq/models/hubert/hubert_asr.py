@@ -675,7 +675,6 @@ class HubertTextMTL(BaseFairseqModel):
         
         assert(audio_embedding.shape[1] == text_embedding.shape[1])
         # building mask
-        print(self.swap_embedding_ratio)
         bsz = audio_embedding.shape[0]
         for i in range(bsz):
             if self.swap_embedding_phoneme_aware:
@@ -683,7 +682,6 @@ class HubertTextMTL(BaseFairseqModel):
 
                 indices = random.sample(list(range(1,len(accum_alignment[i]))), 
                     math.ceil(len(accum_alignment)* self.swap_embedding_ratio))
-                print(indices)
                 for index in indices:
                     start,end = accum_alignment[i][index-1], accum_alignment[i][index]
                     mask[start:end] = 0
@@ -694,6 +692,9 @@ class HubertTextMTL(BaseFairseqModel):
                         device=text_embedding.device
                     ).uniform() > self.swap_embedding_ratio
                 ).float()
+            print(text_embedding.shape)
+            print(audio_embedding.shape)
+            print(mask.shape)
             text_embedding_tmp = text_embedding[i] * mask + audio_embedding[i] * (1 - mask)
             audio_embedding[i] = audio_embedding[i] * mask + text_embedding[i] * (1 - mask)
             text_embedding[i] = text_embedding_tmp
