@@ -420,6 +420,8 @@ class HubertModel(BaseFairseqModel):
     ) -> Dict[str, torch.Tensor]:
         """output layer is 1-based"""
         features = self.forward_features(source)
+        print("during feature extraction forward")
+        print(features.shape)
         if target_list is not None:
             features, target_list = self.forward_targets(features, target_list)
 
