@@ -776,7 +776,7 @@ class HubertTextMTL(BaseFairseqModel):
         )
         # 4. audio encoder -> shared encoder
         for transformer in self.shared_encoder:
-            out,_ = transformer(out["encoder_out"], out["encoder_padding_mask"])
+            out,_ = transformer(out["encoder_out"], out["padding_mask"])
         out = self.proj(out)
         return {
             "mlm_prob": x,
