@@ -637,7 +637,7 @@ class HubertTextMTL(BaseFairseqModel):
             task,
             task.state.dictionaries
         )
-        print(task.state.dictionaries)
+        # print(task.state.dictionaries)
         # embedding_aligner
         embedding_aligner = nn.Parameter(
             torch.FloatTensor(
@@ -705,6 +705,8 @@ class HubertTextMTL(BaseFairseqModel):
     def get_accum_from_phoneme_seq(self, phoneme_seq, phoneme_padding_mask):
         bsz = phoneme_seq.shape[0]
         accum_lists = []
+        print(phoneme_seq.shape)
+        print(phoneme_padding_mask.shape)
         for i in range(bsz):
             accum = [indice+1 for indice,j in enumerate(range(phoneme_seq[i].shape[0])) 
                 if phoneme_padding_mask[i][j] == False and phoneme_seq[i][j]!=phoneme_seq[i][j+1] ]
@@ -726,7 +728,6 @@ class HubertTextMTL(BaseFairseqModel):
         # 2. text_encoder 
         text_encoder_out = self.text_encoder(prev_phoneme,phoneme_padding_mask)
         # 3. text_encoder -> swap embedding
-        print(phoneme_padding_mask)
         self.swap_embedding(
             encoder_out["encoder_out"], 
             text_encoder_out["encoder_out"],
