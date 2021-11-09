@@ -449,7 +449,7 @@ class HubertTextMTLConfig(HubertCtcConfig):
         metadata={"help": "the dimension of embedding aligner"}
     )
     swap_embedding_ratio: float = field(
-        default=0,
+        default=0.2,
         metadata={"help": "the probability of embedding swapping"}
     )
     swap_embedding_phoneme_aware: bool = field(
