@@ -679,6 +679,7 @@ class HubertTextMTL(BaseFairseqModel):
         assert(audio_embedding.shape[1] == text_embedding.shape[1])
         # building mask
         bsz = audio_embedding.shape[0]
+        channel_size = audio_embedding.shape[2]
         for i in range(bsz):
             if self.swap_embedding_phoneme_aware:
                 mask = torch.ones((audio_embedding.shape[1]), device=audio_embedding.device)
@@ -695,6 +696,7 @@ class HubertTextMTL(BaseFairseqModel):
                         device=text_embedding.device
                     ).uniform() > self.swap_embedding_ratio
                 ).float()
+            mask = mask.unsqueeze(1).expand(mask.shape[0],channel_size)
             print(text_embedding.shape)
             print(audio_embedding.shape)
             print(mask.shape)
