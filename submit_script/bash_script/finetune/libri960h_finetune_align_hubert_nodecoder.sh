@@ -1,6 +1,6 @@
 #!/bin/bash
-model_path=/home/v-zhuoyao/workspace/fairseq/submit_script/bash_script/finetune/libri100h_finetune_hubert_iter1.sh
-train_subset=train_clean_100
+model_path=/home/v-zhuoyao/workspace/fairseq/submit_script/bash_script/finetune
+train_subset=train_960
 valid_subset=dev_other
 
 mkdir -p ${model_path}
@@ -10,9 +10,8 @@ python train.py \
 --distributed-world-size 8 \
 --distributed-port 0 \
 --nprocs-per-node 8 \
-/modelblob/users/v-chengw/data/librispeech/manifest/resource \
+/home/v-zhuoyao/workspace/fairseq_master/examples/zhuoyao_optimizing_ali/s0/data/librispeech \
 --save-dir ${model_path} \
---post-process letter \
 --train-subset ${train_subset} \
 --valid-subset ${valid_subset} \
 --no-epoch-checkpoints \
@@ -24,7 +23,7 @@ python train.py \
 --fine-tuning \
 --single-target \
 --arch hubert_ctc \
---w2v-path /modelblob/users/v-chengw/librispeech_model/fairseq/pretrain/hubert_base_relative_libri960_iter1/checkpoint_best.pt \
+--w2v-path /home/v-zhuoyao/workspace/fairseq_master/examples/zhuoyao_optimizing_ali/s0/exp/hubert_pretrain/hubert_base_ls960.pt \
 --labels '["ltr"]' \
 --apply-mask \
 --mask-selection static \

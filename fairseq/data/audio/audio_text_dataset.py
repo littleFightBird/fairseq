@@ -302,9 +302,8 @@ class TextDataset(FairseqDataset):
         
 
     def __getitem__(self, index):
-        wav = self.get_audio(index)
         phoneme_token,bpe_token = self.get_labels(index)
-        return {"id": index, "source": wav, "phoneme": phoneme_token, "bpe":bpe_token}
+        return {"id": index,  "phoneme": phoneme_token, "bpe":bpe_token}
 
     def collater(self, samples):
         phoneme_input = [s["phoneme"] for s in samples]

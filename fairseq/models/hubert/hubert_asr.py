@@ -656,7 +656,7 @@ class HubertTextMTL(BaseFairseqModel):
                 prev_phoneme,
                 phoneme_padding_mask
             )
-        else:
+        elif mode == "text":
             return self.forward_text(
                 prev_phoneme,
                 phoneme_padding_mask
@@ -714,39 +714,39 @@ class HubertTextMTL(BaseFairseqModel):
         # assert audio input is feature
         assert(len(x.shape)==2)
         x_dict = self.w2v_encoder(x, padding_mask, False)
-        
         padding_mask = x_dict["encoder_padding_mask"]
-        # because of w2v downsample we do downsample here
-        '''
-            notice!!!!! 
-            if we change the structure of w2v conv, we should change the downsample here
-            this downsample is compute as follow:
-                w2v conv structure [(512,10,5)] + [(512,3,2)] * 4 + [(512,2,2)] * 2
-            the field we can seen is
-                { (x[i]-1)*2+2 = x[i-1] }*2
-                { (x[i]-1)*2+3 = x[i-1] }*4
-                { (x[i]-1)*5+10 = x[i-1] }*1
-            then we get 400 which is the same as feature extraction of fbank
-            then we can compute overlap from the top (512,3,2)
-                { (x[i]-1)*2+3 = x[i-1] }*4
-                { (x[i]-1)*5+10 = x[i-1] }*1
-            finally we get 80 and ( 400 - 80 ) = 320 = 160 * 2,
-            so the conv structure can map to the kaldi fbank feature by the kaldi fbank
-            feature downsampling of twice
-        '''
-        xt = xt[:,::2]
-        phoneme_padding_mask = phoneme_padding_mask[:,::2]
-        # 2. text_encoder 
-        accum_list = self.get_accum_from_phoneme_seq(xt, phoneme_padding_mask)
-        # for swapping embedding we do not mask the input
-        xt = self.text_encoder(xt,phoneme_padding_mask, apply_mask=False )
-        # 3. text_encoder -> swap embedding
         x = x_dict["encoder_out"]
-        self.swap_embedding(
-            x, 
-            xt["encoder_out"],
-            accum_list
-        )
+        if xt is not None:
+            # because of w2v downsample we do downsample here
+            '''
+                notice!!!!! 
+                if we change the structure of w2v conv, we should change the downsample here
+                this downsample is compute as follow:
+                    w2v conv structure [(512,10,5)] + [(512,3,2)] * 4 + [(512,2,2)] * 2
+                the field we can seen is
+                    { (x[i]-1)*2+2 = x[i-1] }*2
+                    { (x[i]-1)*2+3 = x[i-1] }*4
+                    { (x[i]-1)*5+10 = x[i-1] }*1
+                then we get 400 which is the same as feature extraction of fbank
+                then we can compute overlap from the top (512,3,2)
+                    { (x[i]-1)*2+3 = x[i-1] }*4
+                    { (x[i]-1)*5+10 = x[i-1] }*1
+                finally we get 80 and ( 400 - 80 ) = 320 = 160 * 2,
+                so the conv structure can map to the kaldi fbank feature by the kaldi fbank
+                feature downsampling of twice
+            '''
+            xt = xt[:,::2]
+            phoneme_padding_mask = phoneme_padding_mask[:,::2]
+            # 2. text_encoder 
+            accum_list = self.get_accum_from_phoneme_seq(xt, phoneme_padding_mask)
+            # for swapping embedding we do not mask the input
+            xt = self.text_encoder(xt,phoneme_padding_mask, apply_mask=False )
+            # 3. text_encoder -> swap embedding
+            self.swap_embedding(
+                x, 
+                xt["encoder_out"],
+                accum_list
+            )
         # 4. audio encoder -> embedding aligner -> ctc prob
         #    text encoder -> embedding aligner -> mlm prob
         x_out = nn.functional.softmax(torch.cdist(x,self.embedding_aligner), -1)
