@@ -347,10 +347,11 @@ class HubertEncoder(FairseqEncoder):
         x = self.final_dropout(x)
 
         if self.proj:
-            x = self.proj(x)
+            x_ctc = self.proj(x)
 
         return {
             "encoder_out": x,  # T x B x C
+            "ctc_prob": x_ctc,
             "encoder_padding_mask": padding_mask,  # B x T
             "padding_mask": padding_mask,
         }
@@ -500,9 +501,10 @@ class MaskedTextEncoder(BaseFairseqModel):
         self,
         prev_phoneme,
         prev_phoneme_mask,
+        apply_mask,
     ):
         # 1. apply mask
-        if self.apply_mask:
+        if apply_mask:
             prev_phoneme, _ = self.apply_mask(prev_phoneme, prev_phoneme_mask, self._dictionaries["phoneme"])
         # 2. embedding
         prev_phoneme = self.token_embedding(prev_phoneme)
@@ -513,9 +515,10 @@ class MaskedTextEncoder(BaseFairseqModel):
             prev_phoneme,_ = transformer(prev_phoneme, self_attn_padding_mask=prev_phoneme_mask)
         prev_phoneme = prev_phoneme.transpose(0,1)
         # 4. project
-        prev_phoneme = self.proj(prev_phoneme)
+        prev_phoneme_mlm = self.proj(prev_phoneme)
         return {
             "encoder_out": prev_phoneme,
+            "mlm_prob": prev_phoneme_mlm,
             "padding_mask": prev_phoneme_mask
         }
 
@@ -625,7 +628,7 @@ class HubertTextMTL(BaseFairseqModel):
     def build_model(cls, cfg: HubertTextMTLConfig, task: FairseqTask):
         """Build a new model instance."""
         # 1. audio encoder
-        w2v_encoder = HubertEncoder(cfg, task.target_dictionary)
+        w2v_encoder = HubertEncoder(cfg, task.target_dictionary["phoneme"])
         # 2. text encoder
         text_encoder_embedding = cls.build_embedding(
             cfg, task.state.dictionaries["phoneme"], cfg.w2v_args["model"]["encoder_ffn_embed_dim"], None
@@ -745,7 +748,8 @@ class HubertTextMTL(BaseFairseqModel):
         phoneme_padding_mask = phoneme_padding_mask[:,::2]
         # 2. text_encoder 
         accum_list = self.get_accum_from_phoneme_seq(xt, phoneme_padding_mask)
-        xt = self.text_encoder(xt,phoneme_padding_mask)
+        # for swapping embedding we do not mask the input
+        xt = self.text_encoder(xt,phoneme_padding_mask, apply_mask=False )
         # 3. text_encoder -> swap embedding
         print(x_dict["encoder_out"].shape)
         print(xt["encoder_out"].shape)
@@ -755,18 +759,15 @@ class HubertTextMTL(BaseFairseqModel):
             accum_list
         )
         x = x_dict["encoder_out"]
-        xt = xt["encoder_out"]
         # 4. audio encoder -> embedding aligner -> ctc prob
         #    text encoder -> embedding aligner -> mlm prob
         x_out = nn.functional.softmax(nn.functional.pairwise_distance(x,self.embedding_aligner), -1)
-        xt = nn.functional.softmax(nn.functional.pairwise_distance(xt,self.embedding_aligner), -1)
         # 5. audio encoder -> shared encoder
         for transformer in self.shared_encoder:
             x = transformer(x, x_dict["encoder_padding_mask"])
         x = self.proj(x)
         return {
             "ctc_prob": x_out,
-            "mlm_prob": xt,
             "final_ctc_prob": x,
             "phoneme_padding_mask": padding_mask,
             
