@@ -570,8 +570,6 @@ class HubertTextMTL(BaseFairseqModel):
         w2v_encoder: BaseFairseqModel, 
         text_encoder:BaseFairseqModel, 
         embedding_aligner,
-        audio_encoder_proj,
-        text_encoder_proj,
         ctc_proj
     ):
         super().__init__()
@@ -585,8 +583,6 @@ class HubertTextMTL(BaseFairseqModel):
         # 4. shared encoder
         self.embedding_dim = cfg.w2v_args.model.encoder_embed_dim
         self.dropout = cfg.w2v_args.model.dropout
-        self.audio_encoder_proj = audio_encoder_proj
-        self.text_encoder_proj = text_encoder_proj
         self.shared_encoder = nn.ModuleList(
             [
                 TransformerSentenceEncoderLayer(
@@ -633,9 +629,6 @@ class HubertTextMTL(BaseFairseqModel):
         # 1. audio encoder
         w2v_encoder = HubertEncoder(cfg, task.phoneme_dictionary)
         # 2. text encoder
-        text_encoder_embedding = cls.build_embedding(
-            cfg, task.state.dictionaries["phoneme"], cfg.w2v_args["model"]["encoder_ffn_embed_dim"], None
-        )
         text_encoder = MaskedTextEncoder(
             cfg,
             task,
@@ -644,15 +637,13 @@ class HubertTextMTL(BaseFairseqModel):
         # embedding_aligner
         embedding_aligner = nn.parameter.Parameter(
             torch.empty(
-                (len(task.phoneme_dictionary), cfg.w2v_args.model.encoder_ffn_embed_dim)
+                (len(task.phoneme_dictionary), cfg.w2v_args.model.encoder_embed_dim)
             )
         )
-        # audio encoder proj
-        audio_encoder_proj = nn.Linear(cfg.w2v_args.model.encoder_ffn_embed_dim, len(task.phoneme_dictionary ))
-        text_encoder_proj = nn.Linear(cfg.w2v_args.model.encoder_ffn_embed_dim, len(task.phoneme_dictionary ))
+        
         # ctc proj
-        ctc_proj = nn.Linear(cfg.w2v_args.model.encoder_ffn_embed_dim, len(task.state.dictionaries["bpe"]))
-        return cls(cfg, w2v_encoder, text_encoder, embedding_aligner, audio_encoder_proj, text_encoder_proj, ctc_proj)
+        ctc_proj = nn.Linear(cfg.w2v_args.model.encoder_embed_dim, len(task.state.dictionaries["bpe"]))
+        return cls(cfg, w2v_encoder, text_encoder, embedding_aligner, ctc_proj)
 
     def forward(
         self, 
