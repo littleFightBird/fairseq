@@ -753,9 +753,8 @@ class HubertTextMTL(BaseFairseqModel):
         )
         # 4. audio encoder -> embedding aligner -> ctc prob
         #    text encoder -> embedding aligner -> mlm prob
-        print(self.embedding_aligner.shape)
-        print(x.shape)
         x_out = nn.functional.softmax(torch.cdist(x,self.embedding_aligner), -1)
+        print(x_out.shape)
         # 5. audio encoder -> shared encoder
         for transformer in self.shared_encoder:
             x = transformer(x, x_dict["encoder_padding_mask"])
