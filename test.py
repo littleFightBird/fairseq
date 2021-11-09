@@ -17,7 +17,7 @@ if __name__=='__main__':
         return targets, lengths, ntokens
     def get_mask(input, length):
         bsz = len(length)
-        max_length  = input.shape(1)
+        max_length  = input.shape[1]
         padding_mask = (
             torch.BoolTensor(bsz, max_length).fill_(False)
         )
