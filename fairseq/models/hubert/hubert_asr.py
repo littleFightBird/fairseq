@@ -675,7 +675,7 @@ class HubertTextMTL(BaseFairseqModel):
         
         assert(audio_embedding.shape[1] == text_embedding.shape[1])
         # building mask
-        print(accum_alignment)
+        print(self.swap_embedding_ratio)
         bsz = audio_embedding.shape[0]
         for i in range(bsz):
             if self.swap_embedding_phoneme_aware:
