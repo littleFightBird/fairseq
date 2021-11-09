@@ -506,9 +506,12 @@ class MaskedTextEncoder(BaseFairseqModel):
             prev_phoneme, _ = self.apply_mask(prev_phoneme, prev_phoneme_mask, self._dictionaries["phoneme"])
         # 2. embedding
         prev_phoneme = self.token_embedding(prev_phoneme)
+        print(prev_phoneme.shape)
+        prev_phoneme = prev_phoneme.transpose(0,1)
         # 3. encoder
         for transformer in self.encoder_layers:
-            prev_phoneme = transformer(prev_phoneme, prev_phoneme_mask)
+            prev_phoneme,_ = transformer(prev_phoneme, self_attn_padding_mask=prev_phoneme_mask)
+        prev_phoneme = prev_phoneme.transpose(0,1)
         # 4. project
         prev_phoneme = self.proj(prev_phoneme)
         return {
@@ -717,7 +720,7 @@ class HubertTextMTL(BaseFairseqModel):
         encoder_out = self.w2v_encoder(audio_source, padding_mask, False)
         padding_mask = padding_mask[:, :3:, ]
         # 2. text_encoder 
-        text_encoder_out = self.text_encoder(prev_phoneme,phoneme_padding_mask)
+        text_encoder_out = self.text_encoder(prev_phoneme,self_attn_padding_mask=phoneme_padding_mask, need_weights=False)
         # 3. text_encoder -> swap embedding
         self.swap_embedding(
             encoder_out["encoder_out"], 
