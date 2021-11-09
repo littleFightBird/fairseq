@@ -507,9 +507,11 @@ class MaskedTextEncoder(BaseFairseqModel):
         # 2. embedding
         prev_phoneme = self.token_embedding(prev_phoneme)
         print(prev_phoneme.shape)
+        print(prev_phoneme_mask.shape)
         prev_phoneme = prev_phoneme.transpose(0,1)
         # 3. encoder
         for transformer in self.encoder_layers:
+            
             prev_phoneme,_ = transformer(prev_phoneme, self_attn_padding_mask=prev_phoneme_mask)
         prev_phoneme = prev_phoneme.transpose(0,1)
         # 4. project
