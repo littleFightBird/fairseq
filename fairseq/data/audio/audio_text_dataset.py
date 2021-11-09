@@ -124,6 +124,7 @@ class AudioDataset(FairseqDataset):
         self.max_tokens = max_tokens
         self.max_sentences = max_sentences
         self.max_positions = max_keep_sample_size
+        self.normalize = normalize
 
     def __getitem__(self, index):
         wav = self.get_audio(index)
@@ -146,7 +147,8 @@ class AudioDataset(FairseqDataset):
         import soundfile as sf
 
         wav_path = self.audio_data_dict[index]["path"]
-        wav = get_fbank(wav_path,self.fbank_bins)
+        wav, cur_sample_rate = sf.read(wav_path)
+        wav = torch.from_numpy(wav).float()
         if self.normalize:
             with torch.no_grad():
                 wav = F.layer_norm(wav, wav.shape)

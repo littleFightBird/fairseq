@@ -647,9 +647,9 @@ class HubertTextMTL(BaseFairseqModel):
         padding_mask,
         prev_phoneme,
         phoneme_padding_mask,
-        _type: str = "speech",
+        mode: str = "speech",
     ):
-        if _type == "speech":
+        if mode == "speech":
             return self.forward_speech(
                 audio_source,
                 padding_mask,
