@@ -230,7 +230,8 @@ class HubertModel(BaseFairseqModel):
 
         feature_enc_layers = eval(cfg.conv_feature_layers)  # noqa
         self.embed = feature_enc_layers[-1][0]
-
+        print("cnn contribute")
+        print(feature_enc_layers)
         self.feature_extractor = ConvFeatureExtractionModel(
             conv_layers=feature_enc_layers,
             dropout=0.0,
