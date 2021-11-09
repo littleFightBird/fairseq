@@ -767,16 +767,17 @@ class HubertTextMTL(BaseFairseqModel):
         phoneme_padding_mask
     ):
         # 1. text encoder
-        out = self.text_encoder(prev_phoneme, phoneme_padding_mask, apply_mask=True)
-        phoneme_padding_mask = out["padding_mask"]
+        out_dict = self.text_encoder(prev_phoneme, phoneme_padding_mask, apply_mask=True)
+        phoneme_padding_mask = out_dict["padding_mask"]
         # 2. audio encoder -> embedding aligner -> MLM prob
-        x = out["encoder_out"]
+        x = out_dict["encoder_out"]
         x = nn.functional.softmax(
             torch.cdist(x,self.embedding_aligner), -1
         )
         # 4. audio encoder -> shared encoder
+        out = out_dict["encoder_out"]
         for transformer in self.shared_encoder:
-            out,_ = transformer(out["encoder_out"], out["padding_mask"])
+            out,_ = transformer(out, out_dict["padding_mask"])
         out = self.proj(out)
         return {
             "mlm_prob": x,
