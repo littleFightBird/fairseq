@@ -351,7 +351,6 @@ class HubertEncoder(FairseqEncoder):
 
         return {
             "encoder_out": x,  # T x B x C
-            "ctc_prob": x_ctc,
             "encoder_padding_mask": padding_mask,  # B x T
             "padding_mask": padding_mask,
         }
@@ -571,6 +570,8 @@ class HubertTextMTL(BaseFairseqModel):
         w2v_encoder: BaseFairseqModel, 
         text_encoder:BaseFairseqModel, 
         embedding_aligner,
+        audio_encoder_proj,
+        text_encoder_proj,
         ctc_proj
     ):
         super().__init__()
@@ -584,6 +585,8 @@ class HubertTextMTL(BaseFairseqModel):
         # 4. shared encoder
         self.embedding_dim = cfg.w2v_args.model.encoder_embed_dim
         self.dropout = cfg.w2v_args.model.dropout
+        self.audio_encoder_proj = audio_encoder_proj
+        self.text_encoder_proj = text_encoder_proj
         self.shared_encoder = nn.ModuleList(
             [
                 TransformerSentenceEncoderLayer(
@@ -645,10 +648,12 @@ class HubertTextMTL(BaseFairseqModel):
                 len(task.phoneme_dictionary))
             )
         )
-
+        # audio encoder proj
+        audio_encoder_proj = nn.Linear(cfg.w2v_args.model.encoder_ffn_embed_dim, len(task.phoneme_dictionary ))
+        text_encoder_proj = nn.Linear(cfg.w2v_args.model.encoder_ffn_embed_dim, len(task.phoneme_dictionary ))
         # ctc proj
         ctc_proj = nn.Linear(cfg.w2v_args.model.encoder_ffn_embed_dim, len(task.state.dictionaries["bpe"]))
-        return cls(cfg, w2v_encoder, text_encoder, embedding_aligner, ctc_proj)
+        return cls(cfg, w2v_encoder, text_encoder, embedding_aligner, audio_encoder_proj, text_encoder_proj, ctc_proj)
 
     def forward(
         self, 
@@ -750,16 +755,16 @@ class HubertTextMTL(BaseFairseqModel):
         # for swapping embedding we do not mask the input
         xt = self.text_encoder(xt,phoneme_padding_mask, apply_mask=False )
         # 3. text_encoder -> swap embedding
+        x = x_dict["encoder_out"]
         self.swap_embedding(
-            x_dict["encoder_out"], 
+            x, 
             xt["encoder_out"],
             accum_list
         )
-        x = x_dict["encoder_out"]
         # 4. audio encoder -> embedding aligner -> ctc prob
         #    text encoder -> embedding aligner -> mlm prob
         print(self.embedding_aligner.shape)
-        x_out = nn.functional.softmax(nn.functional.pairwise_distance(x,self.embedding_aligner.data), -1)
+        x_out = nn.functional.softmax(nn.functional.pairwise_distance(self.audio_encoder_proj(x),self.embedding_aligner), -1)
         # 5. audio encoder -> shared encoder
         for transformer in self.shared_encoder:
             x = transformer(x, x_dict["encoder_padding_mask"])
