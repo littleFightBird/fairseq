@@ -628,7 +628,7 @@ class HubertTextMTL(BaseFairseqModel):
     def build_model(cls, cfg: HubertTextMTLConfig, task: FairseqTask):
         """Build a new model instance."""
         # 1. audio encoder
-        w2v_encoder = HubertEncoder(cfg, task.target_dictionary["phoneme"])
+        w2v_encoder = HubertEncoder(cfg, task.phoneme_dictionary)
         # 2. text encoder
         text_encoder_embedding = cls.build_embedding(
             cfg, task.state.dictionaries["phoneme"], cfg.w2v_args["model"]["encoder_ffn_embed_dim"], None
