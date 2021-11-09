@@ -804,13 +804,14 @@ class ConvFeatureExtractionModel(nn.Module):
             in_d = dim
 
     def forward(self, x):
-
+        print("cnn forward")
+        print(x.shape)
         # BxT -> BxCxT
         x = x.unsqueeze(1)
 
         for conv in self.conv_layers:
             x = conv(x)
-
+        print(x.shape)
         return x
 
 

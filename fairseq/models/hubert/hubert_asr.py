@@ -339,6 +339,7 @@ class HubertEncoder(FairseqEncoder):
         ft = self.freeze_finetune_updates <= self.num_updates
 
         with torch.no_grad() if not ft else contextlib.ExitStack():
+
             x, padding_mask = self.w2v_model.extract_features(**w2v_args)
             print("after extract features")
             print(x.shape)
@@ -508,8 +509,6 @@ class MaskedTextEncoder(BaseFairseqModel):
             prev_phoneme, _ = self.apply_mask(prev_phoneme, prev_phoneme_mask, self._dictionaries["phoneme"])
         # 2. embedding
         prev_phoneme = self.token_embedding(prev_phoneme)
-        print(prev_phoneme.shape)
-        print(prev_phoneme_mask.shape)
         prev_phoneme = prev_phoneme.transpose(0,1)
         # 3. encoder
         for transformer in self.encoder_layers:
@@ -723,7 +722,6 @@ class HubertTextMTL(BaseFairseqModel):
         # 1. audio encoder
         # assert audio input is feature
         assert(len(x.shape)==2)
-        x = x.unsqueeze(1)
         x_dict = self.w2v_encoder(x, padding_mask, False)
         
         padding_mask = padding_mask[:, :3:, ]
