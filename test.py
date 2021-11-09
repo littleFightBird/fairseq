@@ -36,8 +36,8 @@ if __name__=='__main__':
     )
     task = OptimizingAlignmentTask(task_config)
     model = HubertTextMTL.build_model(config,task)
-    audio_input = torch.randn((16,500))
-    lengths = [random.randint(450,500) for i in range(16)]
+    audio_input = torch.randn((16,80000))
+    lengths = [random.randint(70000,80000) for i in range(16)]
     audio_mask = get_mask(audio_input, lengths)
     text_input =  [ torch.from_numpy(np.array([random.randint(0,364) for  i in range(500)])) for i in range(16)]
     text_lengths = [500 for i in range(16)]
