@@ -723,7 +723,7 @@ class HubertTextMTL(BaseFairseqModel):
         
         padding_mask = x_dict["encoder_padding_mask"]
         print(xt.shape)
-        # w2v conv structure
+        # because of w2v downsample we do downsample here
         '''
             notice!!!!! 
             if we change the structure of w2v conv, we should change the downsample here
@@ -744,12 +744,13 @@ class HubertTextMTL(BaseFairseqModel):
         xt = xt[:,:2:]
         phoneme_padding_mask = phoneme_padding_mask[:,:2:]
         # 2. text_encoder 
+        accum_list = self.get_accum_from_phoneme_seq(xt, phoneme_padding_mask)
         xt = self.text_encoder(xt,phoneme_padding_mask)
         # 3. text_encoder -> swap embedding
         self.swap_embedding(
             x_dict["encoder_out"], 
             xt["encoder_out"],
-            self.get_accum_from_phoneme_seq(xt["encoder_out"], phoneme_padding_mask)
+            accum_list
         )
         x = x_dict["encoder_out"]
         xt = xt["encoder_out"]
