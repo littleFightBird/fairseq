@@ -672,7 +672,8 @@ class HubertTextMTL(BaseFairseqModel):
         # audio_embedding is B*T*D 
         # text_embedding is B*T*D
         # assert the length of audio embedding is the same as text embedding
-        
+        print(audio_embedding.shape[1])
+        print(text_embedding.shape[1])
         assert(audio_embedding.shape[1] == text_embedding.shape[1])
         # building mask
         bsz = audio_embedding.shape[0]
@@ -701,8 +702,6 @@ class HubertTextMTL(BaseFairseqModel):
     def get_accum_from_phoneme_seq(self, phoneme_seq, phoneme_padding_mask):
         bsz = phoneme_seq.shape[0]
         accum_lists = []
-        print(phoneme_padding_mask.shape)
-        print(phoneme_seq.shape)
         for i in range(bsz):
             accum = [indice+1 for indice,j in enumerate(range(phoneme_seq[i].shape[0]-1)) 
                 if phoneme_padding_mask[i][j] == False and phoneme_seq[i][j]!=phoneme_seq[i][j+1] ]
@@ -722,7 +721,6 @@ class HubertTextMTL(BaseFairseqModel):
         x_dict = self.w2v_encoder(x, padding_mask, False)
         
         padding_mask = x_dict["encoder_padding_mask"]
-        print(xt.shape)
         # because of w2v downsample we do downsample here
         '''
             notice!!!!! 
