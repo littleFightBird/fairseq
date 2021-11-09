@@ -681,7 +681,7 @@ class HubertTextMTL(BaseFairseqModel):
             if self.swap_embedding_phoneme_aware:
                 mask = torch.ones((audio_embedding.shape[1]), device=audio_embedding.device)
 
-                indices = random.sample(list(range(len(1,accum_alignment[i]))), 
+                indices = random.sample(list(range(1,len(accum_alignment[i]))), 
                     math.ceil(len(accum_alignment)* self.swap_embedding_ratio))
                 for index in indices:
                     start,end = accum_alignment[i][index-1], accum_alignment[i][index]
@@ -739,8 +739,8 @@ class HubertTextMTL(BaseFairseqModel):
             so the conv structure can map to the kaldi fbank feature by the kaldi fbank
             feature downsampling of twice
         '''
-        xt = xt[:,:-1:2]
-        phoneme_padding_mask = phoneme_padding_mask[:,:-1:2]
+        xt = xt[:,::2]
+        phoneme_padding_mask = phoneme_padding_mask[:,::2]
         # 2. text_encoder 
         accum_list = self.get_accum_from_phoneme_seq(xt, phoneme_padding_mask)
         xt = self.text_encoder(xt,phoneme_padding_mask)
