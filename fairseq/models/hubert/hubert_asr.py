@@ -705,11 +705,8 @@ class HubertTextMTL(BaseFairseqModel):
     def get_accum_from_phoneme_seq(self, phoneme_seq, phoneme_padding_mask):
         bsz = phoneme_seq.shape[0]
         accum_lists = []
-        print(phoneme_seq.shape)
-        print(phoneme_padding_mask.shape)
-        print([j for indice,j in enumerate(range(phoneme_seq[0].shape[0]))  ])
         for i in range(bsz):
-            accum = [indice+1 for indice,j in enumerate(range(phoneme_seq[i].shape[0])) 
+            accum = [indice+1 for indice,j in enumerate(range(phoneme_seq[i].shape[0]-1)) 
                 if phoneme_padding_mask[i][j] == False and phoneme_seq[i][j]!=phoneme_seq[i][j+1] ]
             accum_lists.append(accum)
         return accum_lists
