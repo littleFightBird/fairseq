@@ -713,39 +713,41 @@ class HubertTextMTL(BaseFairseqModel):
     
     def forward_speech(
         self,
-        audio_source,
+        x,
         padding_mask,
-        prev_phoneme,
+        xt,
         phoneme_padding_mask
     ):
         # 1. audio encoder
         # assert audio input is feature
-        assert(len(audio_source.shape)==2)
-        encoder_out = self.w2v_encoder(audio_source, padding_mask, False)
+        assert(len(x.shape)==2)
+        print(x.shape)
+        x_dict = self.w2v_encoder(x, padding_mask, False)
+        print(x_dict["encoder_out"].shape)
+        
         padding_mask = padding_mask[:, :3:, ]
         # 2. text_encoder 
-        text_encoder_out = self.text_encoder(prev_phoneme,phoneme_padding_mask)
+        xt = self.text_encoder(xt,phoneme_padding_mask)
         # 3. text_encoder -> swap embedding
         self.swap_embedding(
-            encoder_out["encoder_out"], 
-            text_encoder_out["encoder_out"],
-            self.get_accum_from_phoneme_seq(prev_phoneme, phoneme_padding_mask)
+            x["encoder_out"], 
+            xt["encoder_out"],
+            self.get_accum_from_phoneme_seq(xt, phoneme_padding_mask)
         )
-        x = encoder_out["encoder_out"]
-        xt = text_encoder_out["encoder_out"]
+        x = x_dict["encoder_out"]
+        xt = xt["encoder_out"]
         # 4. audio encoder -> embedding aligner -> ctc prob
         #    text encoder -> embedding aligner -> mlm prob
-        x = nn.functional.softmax(nn.functional.pairwise_distance(x,self.embedding_aligner), -1)
+        x_out = nn.functional.softmax(nn.functional.pairwise_distance(x,self.embedding_aligner), -1)
         xt = nn.functional.softmax(nn.functional.pairwise_distance(xt,self.embedding_aligner), -1)
         # 5. audio encoder -> shared encoder
-        out = encoder_out["encoder_out"]
         for transformer in self.shared_encoder:
-            out = transformer(out, encoder_out["encoder_padding_mask"])
-        out = self.proj(out)
+            x = transformer(x, x_dict["encoder_padding_mask"])
+        x = self.proj(x)
         return {
-            "ctc_prob": x,
+            "ctc_prob": x_out,
             "mlm_prob": xt,
-            "final_ctc_prob": out,
+            "final_ctc_prob": x,
             "phoneme_padding_mask": padding_mask,
             
         }
