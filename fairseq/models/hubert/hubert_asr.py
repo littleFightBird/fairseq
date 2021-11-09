@@ -636,9 +636,9 @@ class HubertTextMTL(BaseFairseqModel):
         )
         # embedding_aligner
         embedding_aligner = nn.parameter.Parameter(
-            torch.empty(
+            nn.init.uniform_(torch.empty(
                 (len(task.phoneme_dictionary), cfg.w2v_args.model.encoder_embed_dim)
-            )
+            ))
         )
         
         # ctc proj
