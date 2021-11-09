@@ -297,7 +297,6 @@ class HubertEncoder(FairseqEncoder):
         if state is not None and "task_state" in state:
             # This will load the stored "dictionaries" object
             task.load_state_dict(state["task_state"])
-        print(w2v_args.model)
         model = task.build_model(w2v_args.model)
 
         if state is not None and not cfg.no_pretrained_weights:
@@ -341,8 +340,6 @@ class HubertEncoder(FairseqEncoder):
         with torch.no_grad() if not ft else contextlib.ExitStack():
 
             x, padding_mask = self.w2v_model.extract_features(**w2v_args)
-            print("after extract features")
-            print(x.shape)
             if tbc:
                 # B x T x C -> T x B x C
                 x = x.transpose(0, 1)
@@ -638,7 +635,6 @@ class HubertTextMTL(BaseFairseqModel):
             task,
             task.state.dictionaries
         )
-        # print(task.state.dictionaries)
         # embedding_aligner
         embedding_aligner = nn.Parameter(
             torch.FloatTensor(
@@ -676,8 +672,7 @@ class HubertTextMTL(BaseFairseqModel):
         # audio_embedding is B*T*D 
         # text_embedding is B*T*D
         # assert the length of audio embedding is the same as text embedding
-        print(audio_embedding.shape)
-        print(text_embedding.shape)
+        
         assert(audio_embedding.shape[1] == text_embedding.shape[1])
         # building mask
         bsz = audio_embedding.shape[0]
@@ -724,7 +719,10 @@ class HubertTextMTL(BaseFairseqModel):
         assert(len(x.shape)==2)
         x_dict = self.w2v_encoder(x, padding_mask, False)
         
-        padding_mask = padding_mask[:, :3:, ]
+        padding_mask = x_dict["encoder_padding_mask"]
+        print(xt.shape)
+        xt = xt[:,:2:]
+        phoneme_padding_mask = phoneme_padding_mask[:,:2:]
         # 2. text_encoder 
         xt = self.text_encoder(xt,phoneme_padding_mask)
         # 3. text_encoder -> swap embedding
