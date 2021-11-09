@@ -486,7 +486,6 @@ class MaskedTextEncoder(BaseFairseqModel):
                 for _ in range(cfg.text_encoder_layers)
             ]
         )
-        self.proj = nn.Linear(cfg.w2v_args.model.encoder_embed_dim, len(dictionaries["phoneme"]))
         self._dictionaries = dictionaries
         self._mask_prob = cfg.text_encoder_mask_prob
         self._apply_mask = cfg.text_encoder_apply_mask
@@ -513,11 +512,8 @@ class MaskedTextEncoder(BaseFairseqModel):
             
             prev_phoneme,_ = transformer(prev_phoneme, self_attn_padding_mask=prev_phoneme_mask)
         prev_phoneme = prev_phoneme.transpose(0,1)
-        # 4. project
-        prev_phoneme_mlm = self.proj(prev_phoneme)
         return {
             "encoder_out": prev_phoneme,
-            "mlm_prob": prev_phoneme_mlm,
             "padding_mask": prev_phoneme_mask
         }
 
@@ -753,7 +749,6 @@ class HubertTextMTL(BaseFairseqModel):
         )
         # 4. audio encoder -> embedding aligner -> ctc prob
         #    text encoder -> embedding aligner -> mlm prob
-        print(self.embedding_aligner)
         x_out = nn.functional.softmax(torch.cdist(x,self.embedding_aligner), -1)
         # 5. audio encoder -> shared encoder
         for transformer in self.shared_encoder:
@@ -763,7 +758,6 @@ class HubertTextMTL(BaseFairseqModel):
             "ctc_prob": x_out,
             "final_ctc_prob": x,
             "phoneme_padding_mask": padding_mask,
-            
         }
 
 
@@ -773,16 +767,16 @@ class HubertTextMTL(BaseFairseqModel):
         phoneme_padding_mask
     ):
         # 1. text encoder
-        encoder_out = self.text_encoder(prev_phoneme, phoneme_padding_mask)
+        out = self.text_encoder(prev_phoneme, phoneme_padding_mask)
+        phoneme_padding_mask = out["padding_mask"]
         # 2. audio encoder -> embedding aligner -> MLM prob
-        x = encoder_out["encoder_out"]
+        x = out["encoder_out"]
         x = nn.functional.softmax(
-            nn.functional.pairwise_distance(x,self.embedding_aligner)
+            torch.cdist(x,self.embedding_aligner), -1
         )
         # 4. audio encoder -> shared encoder
-        out = encoder_out["encoder_out"]
         for transformer in self.shared_encoder:
-            out = transformer(out, encoder_out["encoder_padding_mask"])
+            out,_ = transformer(out["encoder_out"], out["encoder_padding_mask"])
         out = self.proj(out)
         return {
             "mlm_prob": x,

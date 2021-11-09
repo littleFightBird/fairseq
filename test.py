@@ -43,11 +43,18 @@ if __name__=='__main__':
     text_lengths = [498 for i in range(16)]
     text_input, text_lengths, _ = collater_seq_label(text_input, task.dictionaries["phoneme"].pad())
     text_mask = get_mask(text_input, text_lengths)
-    output = model(
-        audio_input,
-        audio_mask,
-        text_input,
-        text_mask,
-        _type="speech"
+    # output = model(
+    #     audio_input,
+    #     audio_mask,
+    #     text_input,
+    #     text_mask,
+    #     _type="speech"
+    # )
+    output2 = model(
+        audio_source= None,
+        padding_mask=None,
+        prev_phoneme=text_input,
+        phoneme_padding_mask=text_mask,
+        _type="text"
     )
     # print(output)
