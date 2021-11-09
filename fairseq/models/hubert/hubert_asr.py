@@ -720,7 +720,7 @@ class HubertTextMTL(BaseFairseqModel):
         encoder_out = self.w2v_encoder(audio_source, padding_mask, False)
         padding_mask = padding_mask[:, :3:, ]
         # 2. text_encoder 
-        text_encoder_out = self.text_encoder(prev_phoneme,self_attn_padding_mask=phoneme_padding_mask, need_weights=False)
+        text_encoder_out = self.text_encoder(prev_phoneme,phoneme_padding_mask)
         # 3. text_encoder -> swap embedding
         self.swap_embedding(
             encoder_out["encoder_out"], 
