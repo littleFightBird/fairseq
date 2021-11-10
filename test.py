@@ -54,6 +54,7 @@ if __name__=='__main__':
     criterions_conf = CtcMLMCriterionConfig()
     crit = CtcMlmCriterion(criterions_conf, task)
     sample={
+        'id': "fuck this"
         'net_input':{
             "audio_source":audio_input,
             "padding_mask": audio_mask,
