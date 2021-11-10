@@ -10,8 +10,7 @@ mkdir -p ${model_path}
 python train.py \
     --distributed-world-size 8 \
     --distributed-port 0 \
-    --nprocs-per-node 8 \
-    /home/v-zhuoyao/workspace/fairseq_master/examples/zhuoyao_optimizing_ali/s0/data/librispeech \
+    --nprocs-per-node 8 /home/v-zhuoyao/workspace/fairseq_master/examples/zhuoyao_optimizing_ali/s0/data/librispeech \
     --save-dir ${model_path} \
     --speech-data ${data_path}/${train_subset}/data_format.train \
     --text-data ${data_path}/${train_subset}/librispeech-lm-norm.txt \
