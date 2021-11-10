@@ -143,6 +143,10 @@ class AudioDataset(FairseqDataset):
     def __len__(self):
         return len(self.sizes)
 
+    @property
+    def sizes(self):
+        return self.sizes
+
     def ordered_indices(self):
         if self.shuffle:
             order = [np.random.permutation(len(self))]
@@ -330,6 +334,10 @@ class TextDataset(FairseqDataset):
                 lexicon[item[0]] = item[1:]
         return lexicon
 
+    @property
+    def sizes(self):
+        return self.sizes
+        
     def load_accum_stat(self, accum_path):
         accum_stat = {}
         str_map = {}
