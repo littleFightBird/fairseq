@@ -15,9 +15,8 @@ python train.py \
     --save-dir ${model_path} \
     --speech-data ${data_path}/${train_subset}/data_format.train \
     --text-data ${data_path}/${train_subset}/librispeech-lm-norm.txt \
-    --lexicon_path ${data_path}/text_only_data/librispeech-lexicon.txt \
-    --accum_path ${data_path}/${train_subset}/label/dict.accum.txt \
-    --train-subset ${train_subset} \
+    --lexicon-path ${data_path}/text_only_data/librispeech-lexicon.txt \
+    --accum-path ${data_path}/${train_subset}/label/dict.accum.txt \
     --valid-subset ${valid_subset} \
     --no-epoch-checkpoints \
     --best-checkpoint-metric wer \

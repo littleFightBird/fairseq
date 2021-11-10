@@ -23,7 +23,7 @@ from fairseq.logging.meters import safe_round
 
 
 @dataclass
-class CtcCriterionConfig(FairseqDataclass):
+class CtcMLMCriterionConfig(FairseqDataclass):
     zero_infinity: bool = field(
         default=False,
         metadata={"help": "zero inf loss when source length <= target length"},
@@ -64,9 +64,9 @@ class CtcCriterionConfig(FairseqDataclass):
     )
 
 
-@register_criterion("ctc_mlm", dataclass=CtcCriterionConfig)
+@register_criterion("ctc_mlm", dataclass=CtcMLMCriterionConfig)
 class CtcMlmCriterion(FairseqCriterion):
-    def __init__(self, cfg: CtcCriterionConfig, task: FairseqTask):
+    def __init__(self, cfg: CtcMLMCriterionConfig, task: FairseqTask):
         super().__init__(task)
         self.blank_idx = (
             task.target_dictionary.index(task.blank_symbol)
@@ -236,8 +236,8 @@ class CtcMlmCriterion(FairseqCriterion):
             sample[prefix+"_target"] != self.eos_idx
         )
         targets_flat = sample[prefix+"_target"].masked_select(pad_mask)
-        if prefix+"_lengths" in sample:
-            target_lengths = sample[prefix+"_lengths"]
+        if prefix+"_length" in sample:
+            target_lengths = sample[prefix+"_length"]
         else:
             target_lengths = pad_mask.sum(-1)
         return input_lengths, targets_flat,target_lengths
@@ -249,9 +249,6 @@ class CtcMlmCriterion(FairseqCriterion):
         ).contiguous()  # (T, B, C) from the encoder
         lprobs_final = model.get_normalized_probs(
             net_output["final_ctc_prob"], log_probs=True
-        ).contiguous()  # (T, B, C) from the encoder
-        lprobs_text = model.get_normalized_probs(
-            net_output["mlm_prob"], log_probs=True
         ).contiguous()  # (T, B, C) from the encoder
         
         input_lengths, targets_flat, target_lengths = self.get_flat_input(sample, "phoneme")
@@ -276,16 +273,8 @@ class CtcMlmCriterion(FairseqCriterion):
                 reduction="sum",
                 zero_infinity=self.zero_infinity,
             )
-            
 
-            loss_text = F.cross_entropy(
-                lprobs_text,
-                targets_flat_bpe,
-                reduction="sum",
-                ignore_index=self.padding_idx,
-            )
-
-            loss = loss + loss_final + loss_text
+            loss = loss + loss_final
 
         ntokens = (
             sample["ntokens"] if "ntokens" in sample else target_lengths.sum().item()
@@ -312,9 +301,7 @@ class CtcMlmCriterion(FairseqCriterion):
                 wv_errs = 0
                 for lp, t, inp_l in zip(
                     lprobs_t,
-                    sample["target_label"]
-                    if "target_label" in sample
-                    else sample["target"],
+                    sample["bpe_target"],
                     input_lengths,
                 ):
                     lp = lp[:inp_l].unsqueeze(0)

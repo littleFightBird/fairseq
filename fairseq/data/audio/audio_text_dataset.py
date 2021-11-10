@@ -6,6 +6,7 @@
 import itertools
 import logging
 import os
+from random import sample
 import sys
 from typing import Any, List, Optional, Union
 
@@ -16,6 +17,7 @@ import torch.nn.functional as F
 from fairseq.data import data_utils
 from fairseq.data.fairseq_dataset import FairseqDataset
 from fairseq.data.audio.audio_utils import get_fbank
+from g2p_en import G2p
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +131,12 @@ class AudioDataset(FairseqDataset):
     def __getitem__(self, index):
         wav = self.get_audio(index)
         phoneme_token,bpe_token = self.get_label(index)
-        return {"id": index, "source": wav, "phoneme": phoneme_token, "bpe":bpe_token}
+        '''
+            notice!!!
+            phoneme > 10 is because of the 0-10 in the dictionary of phoneme is <eps>, SIL, SPN 
+        '''
+        phoneme_token_no_rep = [ phoneme_token[i] for i in range(1,len(phoneme_token)) if phoneme_token[i] > 10 and (i==1 or phoneme_token[i]!=phoneme_token[i-1]) ]
+        return {"id": index, "source": wav, "phoneme": phoneme_token, "bpe":bpe_token, "phoneme_target": phoneme_token_no_rep}
 
     def __len__(self):
         return len(self.sizes)
@@ -158,6 +165,7 @@ class AudioDataset(FairseqDataset):
         data = self.audio_data_dict[index]
         phoneme_token = self.label_processors["phoneme"](data["phoneme"])
         bpe_token = self.label_processors["word"](data["word"])
+        bpe_token = self.label_processors["bpe"](bpe_token)
         return phoneme_token, bpe_token
 
     def collater(self, samples):
@@ -178,31 +186,32 @@ class AudioDataset(FairseqDataset):
             audios, audio_size
         )
 
-        phoneme_target = [s["phoneme"] for s in samples]
+        phoneme_input = [s["phoneme"] for s in samples]
         bpe_target = [s["bpe"] for s in samples]
+        phoneme_target = [s["phoneme_target"] for s in samples] 
 
-        phoneme_mask = self.phoneme_padding_mask(phoneme_target)
-        targets_list, lengths_list, ntokens_list = self.collater_label(
-            phoneme_target, bpe_target
+        phoneme_mask = self.phoneme_padding_mask(phoneme_input)
+        data_list, lengths_list, ntokens_list = self.collater_label(
+            phoneme_input, bpe_target
         )
 
         net_input = {
             "audio_source": collated_audios, 
             "padding_mask": padding_mask, 
-            "prev_phoneme": targets_list[0], 
+            "prev_phoneme": data_list[0], 
             "phoneme_padding_mask": phoneme_mask
         }
         batch = {
             "id": torch.LongTensor([s["id"] for s in samples]),
             "net_input": net_input,
         }
-
-        batch["phoneme_length"] = lengths_list[0]
-        batch["phoneme_ntoken"] = ntokens_list[0]
-        batch["phoneme_target"] = targets_list[0]
+        batch["input_audio_length"] = (torch.from_numpy(np.array(audio_sizes)) - (400-320)) / 320
+        batch["phoneme_length"] = lengths_list[2]
+        batch["phoneme_ntoken"] = ntokens_list[2]
+        batch["phoneme_target"] = data_list[2]
         batch["bpe_length"] = lengths_list[1]
         batch["bpe_ntoken"] = ntokens_list[1]
-        batch["bpe_target"] = targets_list[1]
+        batch["bpe_target"] = data_list[1]
         return batch
 
     def phoneme_padding_mask(self, phoneme_target):
@@ -262,18 +271,22 @@ class AudioDataset(FairseqDataset):
         )
         return targets, lengths, ntokens
 
-    def collater_label(self, phoneme_target, bpe_target):
-        phoneme_targets, phoneme_lengths, phoneme_ntokens = self.collater_seq_label(
-            phoneme_target, self.pad_list[0]
+    def collater_label(self, phoneme_input, bpe_target, phoneme_target):
+        phoneme_inputs, phoneme_lengths, phoneme_ntokens = self.collater_seq_label(
+            phoneme_input, self.pad_list[0]
         )
 
         bpe_targets, bpe_lengths, bpe_ntokens = self.collater_seq_label(
             bpe_target, self.pad_list[1]
         )
+
+        phoneme_targets, t_phoneme_lengths, t_phoneme_ntokens = self.collater_seq_label(
+            phoneme_target, self.pad_list[0]
+        )
         
-        targets = [phoneme_targets, bpe_targets]
-        lengths = [phoneme_lengths, bpe_lengths]
-        ntokens = [phoneme_ntokens, bpe_ntokens]
+        targets = [phoneme_inputs, bpe_targets, phoneme_targets]
+        lengths = [phoneme_lengths, bpe_lengths, t_phoneme_lengths]
+        ntokens = [phoneme_ntokens, bpe_ntokens, t_phoneme_ntokens]
 
         return targets, lengths, ntokens
 
@@ -301,22 +314,72 @@ class TextDataset(FairseqDataset):
         self.max_tokens = max_tokens
         self.max_sentences = max_sentences
         self.max_positions = max_text_num
-        
 
+        self.lexicon = self.load_lexicon(lexicon_path)
+        self.accum_stat = self.load_accum_stat(accume_path)
+        self.data_process = data_process
+        self.g2p = G2p()
+
+    def load_lexicon(self, lexicon_path):
+        lexicon = {}
+        with open(lexicon_path) as f:
+            for line in f.readlines():
+                item = line.strip().split()
+                lexicon[item[0]] = item[1:]
+        return lexicon
+
+    def load_accum_stat(self, accum_path):
+        accum_stat = {}
+        str_map = {}
+        with open(accum_stat) as f:
+            for  line in f.readlines():
+                item = line.strip().split()
+                accum_stat[item[0]]=int(item[1])
+        for  key in accum_stat.keys():
+            phoneme = key.split("_")[0]
+            if phoneme not in str_map.keys():
+                str_map[phoneme] = ((phoneme+"_B"+" ") * accum_stat[phoneme+"_B"] + \
+                                    (phoneme+"_I"+" ") * accum_stat[phoneme+"_I"] + \
+                                    (phoneme+"_E"+" ") * accum_stat[phoneme+"_E"] + \
+                                    (phoneme+"_S"+" ") * accum_stat[phoneme+"_S"] ).split()
+        return str_map
     def __getitem__(self, index):
-        phoneme_token,bpe_token = self.get_labels(index)
-        return {"id": index,  "phoneme": phoneme_token, "bpe":bpe_token}
+        phoneme_token,bpe_token, phoneme_target = self.get_labels(index)
+        return {"id": index,  "phoneme": phoneme_token, "bpe":bpe_token, "phoneme_target": phoneme_target}
 
     def get_labels(self, index):
-        word = self.data_dict[index]["word"]
+        words = self.data_dict[index]["word"]
+        bpe_token = self.data_process["word"](words)
+        bpe_token = self.data_process["bpe"](bpe_token)
+        phoneme_token = []
+        phoneme_norep_token = []
+        for word in words:
+            if word in self.lexicon.keys():
+                build_string = ''
+                for s in word:
+                    build_string += s+ " "
+                phoneme_seq = self.g2p(build_string)
+                phoneme_seq = [i for i in phoneme_seq if i != ' ']
+                phoneme_norep_token.extend(phoneme)
+                for phoneme in phoneme_seq:
+                    phoneme_token.extend(self.accum_stat[phoneme])
+        phoneme_token = self.data_process["phoneme"](phoneme_token)
+        phoneme_norep_token = self.data_process["phoneme"](phoneme_norep_token)
+        return phoneme_token, bpe_token, phoneme_norep_token
+
+
 
 
     def collater(self, samples):
         phoneme_input = [s["phoneme"] for s in samples]
         bpe_output = [s["bpe"] for s in samples ]
+        phoneme_target = [s["phoneme_target"] for s in samples]
         phoneme_mask = self.phoneme_padding_mask(phoneme_input)
         phoneme_input, phoneme_lengths, phoneme_ntokens = self.collater_seq_label(
             phoneme_input, self.pad_list[0]
+        )
+        phoneme_target, phoneme_target_lengths, phoneme_target_ntokens = self.collater_seq_label(
+            phoneme_target,self.pad_list[0]
         )
         bpe_output, bpe_lengths, bpe_ntokens = self.collater_seq_label(
             bpe_output, self.pad_list[1]
@@ -330,10 +393,11 @@ class TextDataset(FairseqDataset):
             "id": torch.LongTensor([s["id"] for s in samples]),
             "net_input": net_input,
         }
+        batch["input_phoneme_lengths"] = phoneme_target_lengths
         batch["bpe_target"] = bpe_output
         batch["bpe_length"] = bpe_lengths
-        batch["phoneme_target"] = phoneme_input
-        batch["phoneme_length"] = phoneme_lengths
+        batch["phoneme_target"] = phoneme_target
+        batch["phoneme_length"] = phoneme_target_lengths
         return batch
 
     def collater_seq_label(self, targets, pad):

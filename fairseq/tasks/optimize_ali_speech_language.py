@@ -29,7 +29,11 @@ class LabelEncoder(object):
     def __init__(self, dictionary: Dictionary) -> None:
         self.dictionary = dictionary
 
-    def __call__(self, label: str) -> List[str]:
+    def __call__(self, label: List[str]) -> List[str]:
+        string_build = ''
+        for s in label:
+            string_build += s
+        label = string_build
         return self.dictionary.encode_line(
             label, append_eos=False, add_if_not_exist=False,
         )
@@ -128,6 +132,14 @@ class OptimizingAlignmentConfig(FairseqDataclass):
         default=350000,
         metadata={"help": "max sentences in batch for text"}
     )
+    lexicon_path: str = field(
+        default=MISSING,
+        metadata={"help": "the word to phoneme lexicon"}
+    )
+    accum_path: str = field(
+        default=MISSING,
+        metadata={"help": "accumulate file of phoneme"}
+    )
     
 
 
@@ -192,53 +204,59 @@ class OptimizingAlignmentTask(FairseqTask):
         pad_list = [dict.pad() for dict in dicts]
         eos_list = [dict.eos() for dict in dicts]
 
-        procs = [LabelEncoder(dicts["phoneme"]), SentencepiecesTokenizer(bpe_model) ]
-        audio_dataset = AudioDataset(
-            audio_path=self.cfg.speech_data,
-            sample_rate=self.cfg.sample_rate,
-            label_processors=procs,
-            pad_list=pad_list,
-            eos_list=eos_list,
-            max_keep_sample_size=self.cfg.max_sample_size,
-            min_keep_sample_size=self.cfg.min_sample_size,
-            shuffle=self.cfg.shuffle,
-            normalize=self.cfg.normalize,
-            pad_audio=self.cfg.pad_audio,
-            fbank_bins=self.cfg.fbank_bin,
-            max_sample_size=self.cfg.max_keep_size,
-            max_tokens=self.cfg.audio_max_token,
-            max_sentences=self.cfg.audio_max_sentences
-        )
+        procs = {
+            "phoneme":LabelEncoder(dicts["phoneme"]), 
+            "bpe": LabelEncoder(dicts["bpe"]),
+            "word":SentencepiecesTokenizer(bpe_model) 
+        }
+        if split == "train":
+            audio_dataset = AudioDataset(
+                audio_path=self.cfg.speech_data,
+                sample_rate=self.cfg.sample_rate,
+                label_processors=procs,
+                pad_list=pad_list,
+                eos_list=eos_list,
+                max_keep_sample_size=self.cfg.max_sample_size,
+                min_keep_sample_size=self.cfg.min_sample_size,
+                shuffle=self.cfg.shuffle,
+                normalize=self.cfg.normalize,
+                pad_audio=self.cfg.pad_audio,
+                fbank_bins=self.cfg.fbank_bin,
+                max_sample_size=self.cfg.max_keep_size,
+                max_tokens=self.cfg.audio_max_token,
+                max_sentences=self.cfg.audio_max_sentences
+            )
 
-        text_dataset = TextDataset(
-            data_file_path=self.cfg.text_data,
-            max_text_num=self.cfg.max_sample_size,
-            min_text_num=self.cfg.min_sample_size,
-            data_process=procs,
-            shuffle=self.cfg.shuffle,
-            pad_list=pad_list,
-            max_tokens=self.cfg.text_max_token,
-            max_sentences=self.cfg.text_max_sentences
-        )
+            text_dataset = TextDataset(
+                data_file_path=self.cfg.text_data,
+                max_text_num=self.cfg.max_sample_size,
+                min_text_num=self.cfg.min_sample_size,
+                data_process=procs,
+                shuffle=self.cfg.shuffle,
+                pad_list=pad_list,
+                max_tokens=self.cfg.text_max_token,
+                max_sentences=self.cfg.text_max_sentences,
+                lexicon_path=self.cfg.lexicon_path,
+                accume_path=self.cfg.accum_path
+            )
 
-        self.datasets[split] = MultiModalityDataset(
-            datasets=[audio_dataset,text_dataset]
-        )
-        # hubert v1: pad_audio=True, random_crop=False;
-        # self.datasets[split] = AudioTextDataset(
-        #     manifest,
-        #     text_only_data_set,
-        #     sample_rate=self.cfg.sample_rate,
-        #     label_paths=paths,
-        #     pad_list=pad_list,
-        #     eos_list=eos_list,
-        #     label_processors=procs,
-        #     max_keep_sample_size=self.cfg.max_keep_size,
-        #     min_keep_sample_size=self.cfg.min_sample_size,
-        #     max_sample_size=self.cfg.max_sample_size,
-        #     pad_audio=self.cfg.pad_audio,
-        #     normalize=self.cfg.normalize,
-        #     store_labels=False,
-        #     random_crop=self.cfg.random_crop,
-        #     single_target=self.cfg.single_target,
-        # )
+            self.datasets[split] = MultiModalityDataset(
+                datasets=[audio_dataset,text_dataset]
+            )
+        elif split == "dev":
+            audio_dataset = audio_dataset = AudioDataset(
+                audio_path=self.cfg.speech_data,
+                sample_rate=self.cfg.sample_rate,
+                label_processors=procs,
+                pad_list=pad_list,
+                eos_list=eos_list,
+                max_keep_sample_size=self.cfg.max_sample_size,
+                min_keep_sample_size=self.cfg.min_sample_size,
+                shuffle=self.cfg.shuffle,
+                normalize=self.cfg.normalize,
+                pad_audio=self.cfg.pad_audio,
+                fbank_bins=self.cfg.fbank_bin,
+                max_sample_size=self.cfg.max_keep_size,
+                max_tokens=self.cfg.audio_max_token,
+                max_sentences=self.cfg.audio_max_sentences
+            )

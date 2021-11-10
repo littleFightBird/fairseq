@@ -1,10 +1,12 @@
-from fairseq import data
+from functools import reduce
+from fairseq import criterions, data
 from fairseq.tasks.optimize_ali_speech_language import OptimizingAlignmentConfig, OptimizingAlignmentTask
 import numpy as np
 from fairseq.data import data_utils
 from fairseq.models.hubert.hubert_asr import HubertTextMTLConfig, HubertTextMTL
 import torch
 import random
+from fairseq.criterions.ctc_mlm_mtl import CtcMlmCriterion, CtcMLMCriterionConfig
 
 if __name__=='__main__':
     
@@ -43,14 +45,30 @@ if __name__=='__main__':
     text_lengths = [498 for i in range(16)]
     text_input, text_lengths, _ = collater_seq_label(text_input, task.dictionaries["phoneme"].pad())
     text_mask = get_mask(text_input, text_lengths)
+    bpe_input =  [ torch.from_numpy(np.array([random.randint(0,10000) for  i in range(200)])) for i in range(16)]
+    bpe_lengths = [200 for i in range(16)]
+    bpe_input, bpe_lengths, _ = collater_seq_label(text_input, task.dictionaries["bpe"].pad())
+    bpe_mask = get_mask(text_input, text_lengths)
 
-    epoch_itr = trainer.get_train_iterator(
-            epoch_itr.next_epoch_idx,
-            # sharded data: get train iterator for next epoch
-            load_dataset=task.has_sharded_data("train"),
-            # don't cache epoch iterators for sharded datasets
-            disable_iterator_cache=task.has_sharded_data("train"),
-        )
+
+    criterions_conf = CtcMLMCriterionConfig()
+    crit = CtcMlmCriterion(criterions_conf, task)
+    sample={
+        'net_input':{
+            "audio_source":audio_input,
+            "padding_mask": audio_mask,
+            "prev_phoneme": text_input,
+            "phoneme_padding_mask": text_mask,
+            "mode": "speech"
+        },
+        'input_audio_length': (torch.from_numpy(np.array(lengths)) - (400-320)) / 320,
+        'phoneme_length': text_lengths/2,
+        'phoneme_targets': text_input[:,:text_input.shape[1]/2],
+        'bpe_length': bpe_lengths,
+        'bpe_target': bpe_input,
+        'mode': 'speech'
+    }
+    out = crit(model, sample, reduce=False)
     # output = model(
     #     audio_input,
     #     audio_mask,
