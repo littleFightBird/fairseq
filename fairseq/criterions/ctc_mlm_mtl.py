@@ -242,7 +242,7 @@ class CtcMlmCriterion(FairseqCriterion):
             target_lengths = pad_mask.sum(-1)
         return input_lengths, targets_flat,target_lengths
 
-    def forward_speech(self, model, net_output, reduce=True):
+    def forward_speech(self, model, sample, reduce=True):
         net_output = model(**sample["net_input"])
         lprobs = model.get_normalized_probs(
             net_output["ctc_prob"], log_probs=True
