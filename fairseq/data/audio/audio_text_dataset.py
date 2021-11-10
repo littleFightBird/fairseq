@@ -304,7 +304,7 @@ class TextDataset(FairseqDataset):
         max_tokens: int = None,
         max_sentences: int = None,
     ):
-        self.data_dict, self.inds = load_text_only_data(
+        self.data_dict, self.inds, self.sizes = load_text_only_data(
             data_file_path, max_text_num, min_text_num
         )
         self.shuffle = shuffle
