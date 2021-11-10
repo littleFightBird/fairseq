@@ -254,6 +254,7 @@ class CtcMlmCriterion(FairseqCriterion):
         input_lengths, targets_flat, target_lengths = self.get_flat_input(sample, "phoneme")
         input_lengths, targets_flat_bpe, target_lengths_bpe = self.get_flat_input(sample, "bpe")
         print(input_lengths)
+        print(target_lengths)
         with torch.backends.cudnn.flags(enabled=False):
             loss = F.ctc_loss(
                 lprobs,
