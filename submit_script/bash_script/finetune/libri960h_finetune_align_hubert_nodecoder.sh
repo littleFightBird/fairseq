@@ -12,12 +12,13 @@ python train.py \
     --distributed-world-size 8 \
     --distributed-port 0 \
     --nprocs-per-node 8 \
+    --data ${data_path} \
     --save-dir ${model_path} \
     --speech-data ${data_path}/${train_subset}/data_format.train \
     --text-data ${data_path}/${train_subset}/librispeech-lm-norm.txt \
     --lexicon-path ${data_path}/text_only_data/librispeech-lexicon.txt \
     --accum-path ${data_path}/${train_subset}/label/dict.accum.txt \
-    --valid-subset ${valid_subset} \
+    --valid-subset ${data_path}/${valid_subset}/data_format.dev \
     --no-epoch-checkpoints \
     --best-checkpoint-metric wer \
     --num-workers 4 \
