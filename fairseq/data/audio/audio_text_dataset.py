@@ -27,7 +27,7 @@ def load_paired_data(manifest_path, max_keep, min_keep):
     with open(manifest_path) as f:
         for ind, line in enumerate(f):
             items = line.strip().split(":")
-            assert len(items) ==5, line
+            assert len(items) ==6, line
 
             sz = int(items[5])
             if min_keep is not None and sz < min_keep:
