@@ -50,6 +50,7 @@ class MultiModalityDataset(ConcatDataset):
             max_sentences.append(dset.max_sentences)
         weights = [1.0 for s in dsets]
         super().__init__(dsets, weights)
+        print(self.datasets)
         self.max_tokens = max_tokens
         self.max_positions = max_positions
         self.max_sentences = max_sentences
