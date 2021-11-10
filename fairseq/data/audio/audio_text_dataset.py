@@ -128,7 +128,7 @@ class AudioDataset(FairseqDataset):
         self.max_positions = max_keep_sample_size
         self.normalize = normalize
         self.datasetname = "speech"
-        self.dataset = self.audio_data_dict
+        self.dataset = self
 
     def __getitem__(self, index):
         wav = self.get_audio(index)
@@ -312,7 +312,7 @@ class TextDataset(FairseqDataset):
         self.shuffle = shuffle
         self.pad_list = pad_list
         self.datasetname = "text"
-        self.dataset = self.data_dict
+        self.dataset = self
         self.max_tokens = max_tokens
         self.max_sentences = max_sentences
         self.max_positions = max_text_num
