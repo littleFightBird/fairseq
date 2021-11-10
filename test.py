@@ -63,8 +63,8 @@ if __name__=='__main__':
             "mode": "speech",
             'lengths': ((torch.from_numpy(np.array(lengths)).int() - (400-320)) // 320).int(),
         },
-        'phoneme_length': text_lengths/2,
-        'phoneme_target': text_input[:,:int(text_input.shape[1]/2)],
+        'phoneme_length': text_lengths/5,
+        'phoneme_target': text_input[:,:int(text_input.shape[1]/5)],
         'bpe_length': bpe_lengths,
         'bpe_target': bpe_input,
         'mode': 'speech'
