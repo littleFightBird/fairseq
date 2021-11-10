@@ -84,7 +84,7 @@ def load_text_only_data(text_only_data_set_path, max_text, min_text):
     logger.info(
         (
             f"load text only data"
-            f"max_keep={max_keep}, min_keep={min_keep}, "
+            f"max_keep={max_text}, min_keep={min_text}, "
             f"loaded {len(data_dict)}, skipped {n_short} short and {n_long} long, "
             f"longest-loaded={max(sizes)}, shortest-loaded={min(sizes)}"
         )
