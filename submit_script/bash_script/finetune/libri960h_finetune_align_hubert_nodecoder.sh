@@ -18,6 +18,7 @@ python train.py \
     --lexicon-path ${data_path}/text_only_data/librispeech-lexicon.txt \
     --accum-path ${data_path}/${train_subset}/label/dict.accum.txt \
     --valid-subset ${data_path}/${valid_subset}/data_format.dev \
+    --label-dir ${data_path}/${train_subset}/label \
     --no-epoch-checkpoints \
     --best-checkpoint-metric wer \
     --num-workers 4 \
