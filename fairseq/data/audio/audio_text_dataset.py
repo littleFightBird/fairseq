@@ -61,7 +61,7 @@ def load_paired_data(manifest_path, max_keep, min_keep):
     
 
 def load_text_only_data(text_only_data_set_path, max_text, min_text):
-    n_long, n_short = 0.0 
+    n_long, n_short = 0.0, 0.0  
     data_dict, inds, sizes = [],[],[]
     with open(text_only_data_set_path) as f:
         for  ind, line in enumerate(f):
