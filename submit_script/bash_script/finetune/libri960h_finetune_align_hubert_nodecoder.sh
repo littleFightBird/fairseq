@@ -14,7 +14,7 @@ python train.py \
     --nprocs-per-node 1 \
     --save-dir ${model_path} \
     --speech-data ${data_path}/${train_subset}/data_format.train \
-    --text-data ${data_path}/${train_subset}/librispeech-lm-norm.txt \
+    --text-data ${data_path}/text_only_data/librispeech-lm-norm.txt \
     --lexicon-path ${data_path}/text_only_data/librispeech-lexicon.txt \
     --accum-path ${data_path}/${train_subset}/label/dict.accum.txt \
     --valid-subset ${data_path}/${valid_subset}/data_format.dev \
