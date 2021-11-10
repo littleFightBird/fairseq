@@ -12,7 +12,6 @@ python train.py \
     --distributed-world-size 8 \
     --distributed-port 0 \
     --nprocs-per-node 8 \
-    --data ${data_path} \
     --save-dir ${model_path} \
     --speech-data ${data_path}/${train_subset}/data_format.train \
     --text-data ${data_path}/${train_subset}/librispeech-lm-norm.txt \
@@ -58,4 +57,5 @@ python train.py \
     --fp16 \
     --update-freq 1 \
     --keep-interval-updates 1 \
-    --find-unused-parameters >> ${model_path}/log
+    --find-unused-parameters  \
+    ${data_path} >> ${model_path}/log

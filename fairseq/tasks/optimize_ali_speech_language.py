@@ -61,9 +61,6 @@ class SentencepiecesTokenizer(object):
 
 @dataclass
 class OptimizingAlignmentConfig(FairseqDataclass):
-    data: str = field(
-        default=MISSING, metadata={"help": "path to data directory"}
-    )
     speech_data: str = field(
         default=MISSING, metadata={"help": "path to speech data directory"}
     )
