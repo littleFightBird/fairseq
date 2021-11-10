@@ -77,6 +77,7 @@ class ConcatDataset(FairseqDataset):
             else:
                 # Only support underlying dataset with single size array.
                 assert isinstance(ds.sizes, list)
+                print(ds.sizes[0])
                 _dataset_sizes.append(np.tile(ds.sizes[0], sr))
         return np.concatenate(_dataset_sizes)
 
