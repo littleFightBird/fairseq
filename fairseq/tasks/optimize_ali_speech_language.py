@@ -70,15 +70,6 @@ class OptimizingAlignmentConfig(FairseqDataclass):
     label_dir: str = field(
         default=MISSING, metadata={"help": "path to label"}
     )
-    labels: List[str] = field(
-        default_factory=lambda: ["phoneme", "word"],
-        metadata={
-            "help": (
-                "extension of the label files to load, frame-level labels for"
-                " pre-training, and sequence-level label for fine-tuning"
-            )
-        },
-    )
     sample_rate: int = field(
         default=16_000,
         metadata={
