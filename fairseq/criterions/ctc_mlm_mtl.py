@@ -281,7 +281,7 @@ class CtcMlmCriterion(FairseqCriterion):
         logging_output = {
             "loss": utils.item(loss.data),  # * sample['ntokens'],
             "ntokens": ntokens,
-            "nsentences": sample["id"].numel(),
+            "nsentences": len(sample["id"]),
             "sample_size": sample_size,
         }
 
