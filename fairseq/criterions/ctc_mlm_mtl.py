@@ -235,6 +235,7 @@ class CtcMlmCriterion(FairseqCriterion):
         pad_mask = (sample[prefix+"_target"] != self.pad_idx) & (
             sample[prefix+"_target"] != self.eos_idx
         )
+        print(sample[prefix+"_target"].shape)
         targets_flat = sample[prefix+"_target"].masked_select(pad_mask)
         if prefix+"_length" in sample:
             target_lengths = sample[prefix+"_length"]
