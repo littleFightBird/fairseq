@@ -194,7 +194,7 @@ class OptimizingAlignmentTask(FairseqTask):
 
     def load_dataset(self, split:str, **kwargs) ->None:
         bpe_model = f"{self.cfg.label_dir}/bpe_model/bpe.model"
-        dicts = self.dictionaries()
+        dicts = self.dictionaries
         pad_list = [dict.pad() for dict in dicts]
         eos_list = [dict.eos() for dict in dicts]
 
