@@ -647,6 +647,7 @@ class HubertTextMTL(BaseFairseqModel):
         padding_mask,
         prev_phoneme,
         phoneme_padding_mask,
+        lengths,
         mode: str = "speech",
     ):
         if mode == "speech":
