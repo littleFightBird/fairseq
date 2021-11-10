@@ -6,6 +6,7 @@ valid_subset=dev_other
 
 mkdir -p ${model_path}
 
+cd /home/v-zhuoyao/workspace/fairseq
 
 python train.py \
     --distributed-world-size 8 \
