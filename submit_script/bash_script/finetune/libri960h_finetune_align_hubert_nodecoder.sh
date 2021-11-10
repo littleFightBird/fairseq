@@ -9,9 +9,9 @@ mkdir -p ${model_path}
 cd /home/v-zhuoyao/workspace/fairseq
 
 python train.py \
-    --distributed-world-size 8 \
+    --distributed-world-size 1 \
     --distributed-port 0 \
-    --nprocs-per-node 8 \
+    --nprocs-per-node 1 \
     --save-dir ${model_path} \
     --speech-data ${data_path}/${train_subset}/data_format.train \
     --text-data ${data_path}/${train_subset}/librispeech-lm-norm.txt \
