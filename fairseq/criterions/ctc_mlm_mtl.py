@@ -235,8 +235,6 @@ class CtcMlmCriterion(FairseqCriterion):
         pad_mask = (sample[prefix+"_target"] != self.pad_idx) & (
             sample[prefix+"_target"] != self.eos_idx
         )
-        print(sample[prefix+"_target"].shape)
-        print(pad_mask)
         targets_flat = sample[prefix+"_target"].masked_select(pad_mask)
         if prefix+"_length" in sample:
             target_lengths = sample[prefix+"_length"]
@@ -253,12 +251,6 @@ class CtcMlmCriterion(FairseqCriterion):
         
         input_lengths, targets_flat, target_lengths = self.get_flat_input(sample, "phoneme")
         input_lengths, targets_flat_bpe, target_lengths_bpe = self.get_flat_input(sample, "bpe")
-        print(input_lengths)
-        print(target_lengths.int())
-        print(lprobs.shape)
-        print(targets_flat.shape)
-        print(lprobs_final.shape)
-        print(targets_flat_bpe.shape)
         with torch.backends.cudnn.flags(enabled=False):
             loss = F.ctc_loss(
                 lprobs,
@@ -285,7 +277,7 @@ class CtcMlmCriterion(FairseqCriterion):
             sample["ntokens"] if "ntokens" in sample else target_lengths.sum().item()
         )
 
-        sample_size = sample["target"].size(0) if self.sentence_avg else ntokens
+        sample_size = sample["bpe_target"].size(0) if self.sentence_avg else ntokens
         logging_output = {
             "loss": utils.item(loss.data),  # * sample['ntokens'],
             "ntokens": ntokens,

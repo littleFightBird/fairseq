@@ -53,7 +53,6 @@ if __name__=='__main__':
 
     criterions_conf = CtcMLMCriterionConfig()
     crit = CtcMlmCriterion(criterions_conf, task)
-    print(text_input.shape[1]/2)
     sample={
         'net_input':{
             "audio_source":audio_input,
