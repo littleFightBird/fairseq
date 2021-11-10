@@ -47,7 +47,6 @@ python train.py \
     --final-dropout 0.1 \
     --dropout 0.1 \
     --activation-dropout 0.1 \
-    --criterion ctc \
     --attention-dropout 0.1 \
     --dropout-input 0.1 \
     --max-tokens 3200000 \

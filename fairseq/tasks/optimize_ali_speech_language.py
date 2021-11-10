@@ -195,12 +195,9 @@ class OptimizingAlignmentTask(FairseqTask):
     def load_dataset(self, split:str, **kwargs) ->None:
         bpe_model = f"{self.cfg.label_dir}/bpe_model/bpe.model"
         dicts = self.dictionaries
-        for dict in dicts:
-            print(dict)
-        print(self.target_dictionary)
-        print(self.phoneme_dictionary)
-        pad_list = [dict.pad() for dict in dicts]
-        eos_list = [dict.eos() for dict in dicts]
+        
+        pad_list = [self.phoneme_dictionary.pad(), self.target_dictionary.pad() ]
+        eos_list = [self.phoneme_dictionary.eos(), self.target_dictionary.eos() ]
 
         procs = {
             "phoneme":LabelEncoder(dicts["phoneme"]), 
