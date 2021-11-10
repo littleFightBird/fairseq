@@ -197,6 +197,7 @@ class OptimizingAlignmentTask(FairseqTask):
         dicts = self.dictionaries
         for dict in dicts:
             print(dict)
+            
         pad_list = [dict.pad() for dict in dicts]
         eos_list = [dict.eos() for dict in dicts]
 
