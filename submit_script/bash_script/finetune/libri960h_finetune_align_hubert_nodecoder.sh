@@ -11,7 +11,7 @@ cd /home/v-zhuoyao/workspace/fairseq
 python train.py \
     --distributed-world-size 8 \
     --distributed-port 0 \
-    --nprocs-per-node 8 /home/v-zhuoyao/workspace/fairseq_master/examples/zhuoyao_optimizing_ali/s0/data/librispeech \
+    --nprocs-per-node 8 \
     --save-dir ${model_path} \
     --speech-data ${data_path}/${train_subset}/data_format.train \
     --text-data ${data_path}/${train_subset}/librispeech-lm-norm.txt \
@@ -26,6 +26,7 @@ python train.py \
     --task optimizing_alignment_speech_language \
     --fine-tuning \
     --arch hubert_text_mtl \
+    --criterion ctc_mlm \
     --w2v-path /home/v-zhuoyao/workspace/fairseq_master/examples/zhuoyao_optimizing_ali/s0/exp/hubert_pretrain/hubert_base_ls960.pt \
     --text-encoder-mask-selection static \
     --text-encoder-mask-other 0 \
