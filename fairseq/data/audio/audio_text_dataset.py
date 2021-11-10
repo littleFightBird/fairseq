@@ -331,7 +331,7 @@ class TextDataset(FairseqDataset):
     def load_accum_stat(self, accum_path):
         accum_stat = {}
         str_map = {}
-        with open(accum_stat) as f:
+        with open(accum_path) as f:
             for  line in f.readlines():
                 item = line.strip().split()
                 accum_stat[item[0]]=int(item[1])
