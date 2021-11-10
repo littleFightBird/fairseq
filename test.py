@@ -60,9 +60,9 @@ if __name__=='__main__':
             "padding_mask": audio_mask,
             "prev_phoneme": text_input,
             "phoneme_padding_mask": text_mask,
-            "mode": "speech"
+            "mode": "speech",
+            'lengths': (torch.from_numpy(np.array(lengths)) - (400-320)) / 320,
         },
-        'input_audio_length': (torch.from_numpy(np.array(lengths)) - (400-320)) / 320,
         'phoneme_length': text_lengths/2,
         'phoneme_targets': text_input[:,:int(text_input.shape[1]/2)],
         'bpe_length': bpe_lengths,

@@ -231,7 +231,7 @@ class CtcMlmCriterion(FairseqCriterion):
         return loss, sample_size, logging_output
 
     def get_flat_input(self,sample,prefix):
-        input_lengths = sample["net_input"][prefix+"_lengths"]
+        input_lengths = sample["net_input"]["lengths"]
         pad_mask = (sample[prefix+"_target"] != self.pad_idx) & (
             sample[prefix+"_target"] != self.eos_idx
         )
