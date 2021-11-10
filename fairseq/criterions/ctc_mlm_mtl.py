@@ -244,9 +244,9 @@ class CtcMlmCriterion(FairseqCriterion):
 
     def forward_speech(self, model, sample, reduce=True):
         net_output = model(**sample["net_input"])
-        lprobs = net_output["ctc_prob"]
+        lprobs = net_output["ctc_prob"].transpose(0,1)
         lprobs_final = model.get_normalized_probs(
-            net_output["final_ctc_prob"], log_probs=True
+            net_output["final_ctc_prob"].transpose(0,1), log_probs=True
         ).contiguous()  # (T, B, C) from the encoder
         
         input_lengths, targets_flat, target_lengths = self.get_flat_input(sample, "phoneme")
