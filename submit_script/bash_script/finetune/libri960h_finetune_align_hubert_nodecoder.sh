@@ -24,7 +24,6 @@ python train.py \
     --max-update 80000 \
     --sentence-avg \
     --task optimizing_alignment_speech_language \
-    --fine-tuning \
     --arch hubert_text_mtl \
     --criterion ctc_mlm \
     --w2v-path /home/v-zhuoyao/workspace/fairseq_master/examples/zhuoyao_optimizing_ali/s0/exp/hubert_pretrain/hubert_base_ls960.pt \
