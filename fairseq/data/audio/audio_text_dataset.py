@@ -128,7 +128,7 @@ class AudioDataset(FairseqDataset):
 
     def __getitem__(self, index):
         wav = self.get_audio(index)
-        phoneme_token,bpe_token = self.get_labels(index)
+        phoneme_token,bpe_token = self.get_label(index)
         return {"id": index, "source": wav, "phoneme": phoneme_token, "bpe":bpe_token}
 
     def __len__(self):
@@ -281,6 +281,8 @@ class TextDataset(FairseqDataset):
     def __init__(
         self,
         data_file_path: str,
+        lexicon_path: str,
+        accume_path: str,
         max_text_num:int = None,
         min_text_num:int = None,
         data_process:Optional[List[Any]] = None,
@@ -304,6 +306,10 @@ class TextDataset(FairseqDataset):
     def __getitem__(self, index):
         phoneme_token,bpe_token = self.get_labels(index)
         return {"id": index,  "phoneme": phoneme_token, "bpe":bpe_token}
+
+    def get_labels(self, index):
+        word = self.data_dict[index]["word"]
+
 
     def collater(self, samples):
         phoneme_input = [s["phoneme"] for s in samples]
