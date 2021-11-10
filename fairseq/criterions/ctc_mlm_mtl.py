@@ -244,9 +244,7 @@ class CtcMlmCriterion(FairseqCriterion):
 
     def forward_speech(self, model, sample, reduce=True):
         net_output = model(**sample["net_input"])
-        lprobs = model.get_normalized_probs(
-            net_output["ctc_prob"], log_probs=True
-        ).contiguous()  # (T, B, C) from the encoder
+        lprobs = net_output["ctc_prob"]
         lprobs_final = model.get_normalized_probs(
             net_output["final_ctc_prob"], log_probs=True
         ).contiguous()  # (T, B, C) from the encoder
@@ -255,6 +253,8 @@ class CtcMlmCriterion(FairseqCriterion):
         input_lengths, targets_flat_bpe, target_lengths_bpe = self.get_flat_input(sample, "bpe")
         print(input_lengths)
         print(target_lengths)
+        print(lprobs.shape)
+        print(lprobs_final.shape)
         with torch.backends.cudnn.flags(enabled=False):
             loss = F.ctc_loss(
                 lprobs,
