@@ -111,7 +111,7 @@ class AudioDataset(FairseqDataset):
         max_tokens: int = None,
         max_sentences: int = None,
     ):
-        self.audio_data_dict, self.audio_inds, self.sizes = load_paired_data(
+        self.audio_data_dict, self.audio_inds, self.audio_sizes = load_paired_data(
             audio_path, max_keep_sample_size, min_keep_sample_size
         )
 
@@ -145,7 +145,7 @@ class AudioDataset(FairseqDataset):
 
     @property
     def sizes(self):
-        return self.sizes
+        return self.audio_sizes
 
     def ordered_indices(self):
         if self.shuffle:
@@ -310,7 +310,7 @@ class TextDataset(FairseqDataset):
         max_tokens: int = None,
         max_sentences: int = None,
     ):
-        self.data_dict, self.inds, self.sizes = load_text_only_data(
+        self.data_dict, self.inds, self.text_sizes = load_text_only_data(
             data_file_path, max_text_num, min_text_num
         )
         self.shuffle = shuffle
@@ -336,8 +336,8 @@ class TextDataset(FairseqDataset):
 
     @property
     def sizes(self):
-        return self.sizes
-        
+        return self.text_sizes
+
     def load_accum_stat(self, accum_path):
         accum_stat = {}
         str_map = {}
