@@ -149,6 +149,7 @@ def collect_filtered(function, iterable, filtered):
         iterable (iterable): iterable to filter
         filtered (list): list to store filtered elements
     """
+    print(iterable)
     for el in iterable:
         if function(el):
             yield el
