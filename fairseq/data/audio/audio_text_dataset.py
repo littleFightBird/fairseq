@@ -200,7 +200,8 @@ class AudioDataset(FairseqDataset):
             "audio_source": collated_audios, 
             "padding_mask": padding_mask, 
             "prev_phoneme": data_list[0], 
-            "phoneme_padding_mask": phoneme_mask
+            "phoneme_padding_mask": phoneme_mask,
+            "mode": "speech"
         }
         batch = {
             "id": torch.LongTensor([s["id"] for s in samples]),
@@ -213,7 +214,6 @@ class AudioDataset(FairseqDataset):
         batch["bpe_length"] = lengths_list[1]
         batch["bpe_ntoken"] = ntokens_list[1]
         batch["bpe_target"] = data_list[1]
-        batch["mode"] = "speech"
         return batch
 
     def phoneme_padding_mask(self, phoneme_target):
@@ -282,7 +282,6 @@ class AudioDataset(FairseqDataset):
         bpe_targets, bpe_lengths, bpe_ntokens = self.collater_seq_label(
             bpe_target, self.pad_list[1]
         )
-        print(phoneme_target)
         phoneme_targets, t_phoneme_lengths, t_phoneme_ntokens = self.collater_seq_label(
             phoneme_target, self.pad_list[0]
         )
@@ -397,7 +396,8 @@ class TextDataset(FairseqDataset):
 
         net_input = {
             "prev_phoneme": phoneme_input, 
-            "phoneme_padding_mask": phoneme_mask
+            "phoneme_padding_mask": phoneme_mask,
+            "mode":"text"
         }
         batch = {
             "id": torch.LongTensor([s["id"] for s in samples]),
@@ -408,7 +408,6 @@ class TextDataset(FairseqDataset):
         batch["bpe_length"] = bpe_lengths
         batch["phoneme_target"] = phoneme_target
         batch["phoneme_length"] = phoneme_target_lengths
-        batch["mode"] = "text"
         return batch
 
     def collater_seq_label(self, targets, pad):
