@@ -135,12 +135,12 @@ class OptimizingAlignmentConfig(FairseqDataclass):
         default=MISSING,
         metadata={"help": "accumulate file of phoneme"}
     )
-    sample_ratio: List = field(
-        default=[1,1],
+    sample_ratio: str = field(
+        default="1:1",
         metadata={"help": "token num speech:text"}
     )
-    batch_ratio: List = field(
-        default=[1, 100],
+    batch_ratio: str = field(
+        default="1:100",
         metadata={"help": "batch size speech: text"}
     )
     
@@ -213,6 +213,8 @@ class OptimizingAlignmentTask(FairseqTask):
             "bpe": LabelEncoder(dicts["bpe"]),
             "word":SentencepiecesTokenizer(bpe_model) 
         }
+        sample_ratio = [ float(i) for i in self.cfg.sample_ratio.split(":")]
+        batch_ratio = [ float(i) for i in self.cfg.batch_ratio.split(":")]
         if split == "train":
             audio_dataset = AudioDataset(
                 audio_path=self.cfg.speech_data,
@@ -242,8 +244,8 @@ class OptimizingAlignmentTask(FairseqTask):
             
             self.datasets[split] = MultitaskDataset(
                 datasets=[audio_dataset, text_dataset],
-                sample_ratios=self.cfg.sample_ratio,
-                batch_ratio=self.cfg.batch_ratio
+                sample_ratios=sample_ratio,
+                batch_ratio=batch_ratio
             )
         elif split == "dev":
             audio_dataset = AudioDataset(
