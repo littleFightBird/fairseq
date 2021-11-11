@@ -222,6 +222,8 @@ class AudioDataset(FairseqDataset):
         max_size = max(phoneme_sizes)
         batch_size = len(phoneme_target)
         padd_mask = torch.BoolTensor((batch_size, max_size)).fill_(False)
+        print(batch_size,max_size)
+        print(phoneme_sizes)
         for  i, phoneme in enumerate(phoneme_target):
             diff =  max_size - len(phoneme) 
             if diff == 0:
