@@ -9,7 +9,7 @@ import logging
 import numpy as np
 from torch.utils.data.dataloader import default_collate
 
-from . import FairseqDataset
+from fairseq.data import FairseqDataset
 
 logger = logging.getLogger(__name__)
 
