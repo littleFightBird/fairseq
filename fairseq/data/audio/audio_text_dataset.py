@@ -213,6 +213,7 @@ class AudioDataset(FairseqDataset):
         batch["bpe_length"] = lengths_list[1]
         batch["bpe_ntoken"] = ntokens_list[1]
         batch["bpe_target"] = data_list[1]
+        batch["mode"] = "speech"
         return batch
 
     def phoneme_padding_mask(self, phoneme_target):
@@ -407,6 +408,7 @@ class TextDataset(FairseqDataset):
         batch["bpe_length"] = bpe_lengths
         batch["phoneme_target"] = phoneme_target
         batch["phoneme_length"] = phoneme_target_lengths
+        batch["mode"] = "text"
         return batch
 
     def collater_seq_label(self, targets, pad):
