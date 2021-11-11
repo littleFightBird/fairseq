@@ -93,7 +93,7 @@ class OptimizingAlignmentConfig(FairseqDataclass):
         },
     )
     max_keep_size: Optional[int] = field(
-        default=None,
+        default=1000000000,
         metadata={"help": "exclude sample longer than this"},
     )
     max_sample_size: Optional[int] = field(
