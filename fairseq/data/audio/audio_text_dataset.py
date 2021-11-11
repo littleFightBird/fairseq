@@ -132,7 +132,7 @@ class AudioDataset(FairseqDataset):
             notice!!!
             phoneme > 10 is because of the 0-10 in the dictionary of phoneme is <eps>, SIL, SPN 
         '''
-        phoneme_token_no_rep =np.array( [ int(phoneme_token[i]) for i in range(1,len(phoneme_token)) if phoneme_token[i] > 10 and (i==1 or phoneme_token[i]!=phoneme_token[i-1]) ] )
+        phoneme_token_no_rep = torch.from_numpy(np.array( [ int(phoneme_token[i]) for i in range(1,len(phoneme_token)) if phoneme_token[i] > 10 and (i==1 or phoneme_token[i]!=phoneme_token[i-1]) ] ))
         return {"id": index, "source": wav, "phoneme": phoneme_token, "bpe":bpe_token, "phoneme_target": phoneme_token_no_rep}
 
     def __len__(self):
