@@ -33,7 +33,7 @@ class LabelEncoder(object):
     def __call__(self, label: List[str]) -> List[str]:
         string_build = ''
         for s in label:
-            string_build += s
+            string_build += s+ " "
         label = string_build
         print(label)
         return self.dictionary.encode_line(
@@ -61,7 +61,7 @@ class SentencepiecesTokenizer(object):
         if isinstance(line, List):
             string_build = ''
             for s in line:
-                string_build += s
+                string_build += s+ " "
             line = string_build
         return self.sp.EncodeAsPieces(line)
 
