@@ -402,6 +402,8 @@ class TextDataset(FairseqDataset):
         )
 
         net_input = {
+            "audio_source": None, 
+            "padding_mask": None, 
             "prev_phoneme": phoneme_input, 
             "phoneme_padding_mask": phoneme_mask,
             "mode":"text",
