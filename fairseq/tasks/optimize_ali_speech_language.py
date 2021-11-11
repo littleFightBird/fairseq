@@ -55,8 +55,13 @@ class SentencepiecesTokenizer(object):
             self.sp = spm.SentencePieceProcessor()
             self.sp.load(self.model)
 
-    def __call__(self, line: str) -> List[str]:
+    def __call__(self, line) -> List[str]:
         self._build_sentence_piece_processor()
+        if isinstance(line, List):
+            string_build = ''
+            for s in label:
+                string_build += s
+            line = string_build
         return self.sp.EncodeAsPieces(line)
 
 
