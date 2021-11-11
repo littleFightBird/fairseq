@@ -132,7 +132,7 @@ class AudioDataset(FairseqDataset):
             notice!!!
             phoneme > 10 is because of the 0-10 in the dictionary of phoneme is <eps>, SIL, SPN 
         '''
-        phoneme_token_no_rep = [ int(phoneme_token[i]) for i in range(1,len(phoneme_token)) if phoneme_token[i] > 10 and (i==1 or phoneme_token[i]!=phoneme_token[i-1]) ]
+        phoneme_token_no_rep =np.array( [ int(phoneme_token[i]) for i in range(1,len(phoneme_token)) if phoneme_token[i] > 10 and (i==1 or phoneme_token[i]!=phoneme_token[i-1]) ] )
         return {"id": index, "source": wav, "phoneme": phoneme_token, "bpe":bpe_token, "phoneme_target": phoneme_token_no_rep}
 
     def __len__(self):
@@ -278,7 +278,7 @@ class AudioDataset(FairseqDataset):
         phoneme_inputs, phoneme_lengths, phoneme_ntokens = self.collater_seq_label(
             phoneme_input, self.pad_list[0]
         )
-
+        print(bpe_target)
         bpe_targets, bpe_lengths, bpe_ntokens = self.collater_seq_label(
             bpe_target, self.pad_list[1]
         )
