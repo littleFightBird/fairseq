@@ -290,6 +290,9 @@ class AudioDataset(FairseqDataset):
 
         return targets, lengths, ntokens
 
+    def size(self, index):
+        return self.sizes[index]
+
 class TextDataset(FairseqDataset):
     def __init__(
         self,
@@ -365,8 +368,8 @@ class TextDataset(FairseqDataset):
         phoneme_norep_token = self.data_process["phoneme"](phoneme_norep_token)
         return phoneme_token, bpe_token, phoneme_norep_token
 
-
-
+    def size(self, index):
+        return self.sizes[index]
 
     def collater(self, samples):
         phoneme_input = [s["phoneme"] for s in samples]
