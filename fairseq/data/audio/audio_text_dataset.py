@@ -278,7 +278,6 @@ class AudioDataset(FairseqDataset):
         phoneme_inputs, phoneme_lengths, phoneme_ntokens = self.collater_seq_label(
             phoneme_input, self.pad_list[0]
         )
-        print(bpe_target)
         bpe_targets, bpe_lengths, bpe_ntokens = self.collater_seq_label(
             bpe_target, self.pad_list[1]
         )
