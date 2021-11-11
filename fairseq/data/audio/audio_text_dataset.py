@@ -293,6 +293,9 @@ class AudioDataset(FairseqDataset):
     def size(self, index):
         return self.sizes[index]
 
+    def num_tokens(self, index: int):
+        return self.size(index)
+
 class TextDataset(FairseqDataset):
     def __init__(
         self,
