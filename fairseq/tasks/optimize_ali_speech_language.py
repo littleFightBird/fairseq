@@ -35,6 +35,7 @@ class LabelEncoder(object):
         for s in label:
             string_build += s
         label = string_build
+        print(label)
         return self.dictionary.encode_line(
             label, append_eos=False, add_if_not_exist=False,
         )

@@ -164,7 +164,7 @@ class AudioDataset(FairseqDataset):
 
     def get_label(self, index):
         data = self.audio_data_dict[index]
-        print(data["phoneme"])
+        # print(data["phoneme"])
         phoneme_token = self.label_processors["phoneme"](data["phoneme"])
         print(phoneme_token)
         bpe_token = self.label_processors["word"](data["word"])
