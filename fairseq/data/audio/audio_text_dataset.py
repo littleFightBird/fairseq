@@ -164,9 +164,7 @@ class AudioDataset(FairseqDataset):
 
     def get_label(self, index):
         data = self.audio_data_dict[index]
-        # print(data["phoneme"])
         phoneme_token = self.label_processors["phoneme"](data["phoneme"])
-        print(phoneme_token)
         bpe_token = self.label_processors["word"](data["word"])
         bpe_token = self.label_processors["bpe"](bpe_token)
         return phoneme_token, bpe_token
@@ -181,7 +179,6 @@ class AudioDataset(FairseqDataset):
         audios = [s["source"] for s in samples]
         audio_sizes = [len(s) for s in audios]
         if self.pad_audio:
-            print(max(audio_sizes), self.max_sample_size)
             audio_size = min(max(audio_sizes), self.max_sample_size)
         else:
             audio_size = min(min(audio_sizes), self.max_sample_size)
@@ -272,7 +269,6 @@ class AudioDataset(FairseqDataset):
     def collater_seq_label(self, targets, pad):
         lengths = torch.LongTensor([len(t) for t in targets])
         ntokens = lengths.sum().item()
-        print(targets)
         targets = data_utils.collate_tokens(
             targets, pad_idx=pad, left_pad=False
         )
