@@ -126,6 +126,7 @@ class AudioDataset(FairseqDataset):
         self.pad_audio = pad_audio
 
     def __getitem__(self, index):
+        print(self.audio_data_dict)
         wav = self.get_audio(index)
         phoneme_token,bpe_token = self.get_label(index)
         '''
