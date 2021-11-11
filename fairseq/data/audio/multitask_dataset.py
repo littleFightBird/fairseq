@@ -173,7 +173,7 @@ class MultitaskDataset(FairseqDataset):
                 ignored_some = True
                 logger.warning(
                     f"{len(ignored)} samples from {i} have invalid sizes and will be skipped, "
-                    f"max_positions={max_positions[i]}, first few sample ids={ignored[:10]}"
+                    f"max_positions={max_positions}, first few sample ids={ignored[:10]}"
                 )
 
         logger.info('update dataset size')
