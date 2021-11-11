@@ -523,6 +523,8 @@ class HubertTextMTL(BaseFairseqModel):
                 so the conv structure can map to the kaldi fbank feature by the kaldi fbank
                 feature downsampling of twice
             '''
+            print(xt.shape)
+            print(phoneme_padding_mask.shape)
             xt = xt[:,::2]
             phoneme_padding_mask = phoneme_padding_mask[:,::2]
             # 2. text_encoder 
