@@ -195,7 +195,6 @@ class AudioDataset(FairseqDataset):
         data_list, lengths_list, ntokens_list = self.collater_label(
             phoneme_input, bpe_target, phoneme_target
         )
-        print(phoneme_mask)
         net_input = {
             "audio_source": collated_audios, 
             "padding_mask": padding_mask, 
@@ -377,6 +376,15 @@ class TextDataset(FairseqDataset):
 
     def num_tokens(self, index: int):
         return self.size(index)
+
+    def ordered_indices(self):
+        if self.shuffle:
+            order = [np.random.permutation(len(self))]
+        else:
+            order = [np.arange(len(self))]
+
+        order.append(self.sizes)
+        return np.lexsort(order)[::-1]
 
     def collater(self, samples):
         phoneme_input = [s["phoneme"] for s in samples]
