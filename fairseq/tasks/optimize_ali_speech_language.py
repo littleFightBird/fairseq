@@ -9,6 +9,7 @@ from random import shuffle
 import sys
 from typing import Dict, List, MutableMapping, Optional, Tuple, Union
 from fairseq.dataclass import configs
+from fairseq.utils import index_put
 
 import numpy as np
 import sentencepiece as spm
@@ -252,3 +253,22 @@ class OptimizingAlignmentTask(FairseqTask):
                 max_sentences=self.cfg.audio_max_sentences
             )
             self.datasets[split] = audio_dataset
+
+    def filter_indices_by_size(self, indices, dataset, max_positions=None, ignore_invalid_inputs=False):
+        print(indices, max_positions)
+        indices, ignored = dataset.filter_indices_by_size(indices, max_positions)
+        if len(ignored) > 0:
+            if not ignore_invalid_inputs:
+                raise Exception(
+                    (
+                        "Size of sample #{} is invalid (={}) since max_positions={}, "
+                        "skip this example with --skip-invalid-size-inputs-valid-test"
+                    ).format(ignored[0], dataset.size(ignored[0]), max_positions)
+                )
+            logger.warning(
+                (
+                    "{:,} samples have invalid sizes and will be skipped, "
+                    "max_positions={}, first few sample ids={}"
+                ).format(len(ignored), max_positions, ignored[:10])
+            )
+        return indices
