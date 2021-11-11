@@ -27,26 +27,43 @@ def load_paired_data(manifest_path, max_keep, min_keep):
     with open(manifest_path) as f:
         for ind, line in enumerate(f):
             items = line.strip().split(":")
-            assert len(items) ==6, line
-
-            sz = int(items[5])
-            if min_keep is not None and sz < min_keep:
-                n_short += 1
-            elif max_keep is not None and sz > max_keep:
-                n_long += 1
-            else:
-                data_dict.append(
-                    {
-                        "id": items[1].split(" ")[0],
-                        "path": items[2].split(" ")[0],
-                        "phoneme": items[3].split(" ")[0:-1],
-                        "word": items[4].split(" ")[0:-1],
-                        "size": sz,
-                        "style": "paired"
-                    }
-                )
-                inds.append(ind)
-                sizes.append(sz)
+            if len(items) == 6:
+                sz = int(items[5])
+                if min_keep is not None and sz < min_keep:
+                    n_short += 1
+                elif max_keep is not None and sz > max_keep:
+                    n_long += 1
+                else:
+                    data_dict.append(
+                        {
+                            "id": items[1].split(" ")[0],
+                            "path": items[2].split(" ")[0],
+                            "phoneme": items[3].split(" ")[0:-1],
+                            "word": items[4].split(" ")[0:-1],
+                            "size": sz,
+                            "style": "paired"
+                        }
+                    )
+                    inds.append(ind)
+                    sizes.append(sz)
+            elif len(items) == 5:
+                sz = int(items[4])
+                if min_keep is not None and sz < min_keep:
+                    n_short += 1
+                elif max_keep is not None and sz > max_keep:
+                    n_long += 1
+                else:
+                    data_dict.append(
+                        {
+                            "id": items[1].split(" ")[0],
+                            "path": items[2].split(" ")[0],
+                            "word": items[3].split(" ")[0:-1],
+                            "size": sz,
+                            "style": "paired"
+                        }
+                    )
+                    inds.append(ind)
+                    sizes.append(sz)
     tot = ind + 1
     logger.info(
         (
@@ -128,12 +145,15 @@ class AudioDataset(FairseqDataset):
     def __getitem__(self, index):
         wav = self.get_audio(index)
         phoneme_token,bpe_token = self.get_label(index)
-        '''
-            notice!!!
-            phoneme > 10 is because of the 0-10 in the dictionary of phoneme is <eps>, SIL, SPN 
-        '''
-        phoneme_token_no_rep = torch.from_numpy(np.array( [ int(phoneme_token[i]) for i in range(1,len(phoneme_token)) if phoneme_token[i] > 10 and (i==1 or phoneme_token[i]!=phoneme_token[i-1]) ] ))
-        return {"id": index, "source": wav, "phoneme": phoneme_token, "bpe":bpe_token, "phoneme_target": phoneme_token_no_rep}
+        if phoneme_token is not None:
+            '''
+                notice!!!
+                phoneme > 10 is because of the 0-10 in the dictionary of phoneme is <eps>, SIL, SPN 
+            '''
+            phoneme_token_no_rep = torch.from_numpy(np.array( [ int(phoneme_token[i]) for i in range(1,len(phoneme_token)) if phoneme_token[i] > 10 and (i==1 or phoneme_token[i]!=phoneme_token[i-1]) ] ))
+            return {"id": index, "source": wav, "phoneme": phoneme_token, "bpe":bpe_token, "phoneme_target": phoneme_token_no_rep}
+        else:
+            return {"id": index, "source": wav, "phoneme": None,          "bpe":bpe_token, "phoneme_target": None}
 
     def __len__(self):
         return len(self.sizes)
@@ -164,7 +184,9 @@ class AudioDataset(FairseqDataset):
 
     def get_label(self, index):
         data = self.audio_data_dict[index]
-        phoneme_token = self.label_processors["phoneme"](data["phoneme"])
+        phoneme_token = None
+        if "phoneme" in data.keys():
+            phoneme_token = self.label_processors["phoneme"](data["phoneme"])
         bpe_token = self.label_processors["word"](data["word"])
         bpe_token = self.label_processors["bpe"](bpe_token)
         return phoneme_token, bpe_token
@@ -186,23 +208,34 @@ class AudioDataset(FairseqDataset):
         collated_audios, padding_mask, audio_starts = self.collater_audio(
             audios, audio_size
         )
-
-        phoneme_input = [s["phoneme"] for s in samples]
         bpe_target = [s["bpe"] for s in samples]
-        phoneme_target = [s["phoneme_target"] for s in samples] 
-
-        phoneme_mask = self.phoneme_padding_mask(phoneme_input)
-        data_list, lengths_list, ntokens_list = self.collater_label(
-            phoneme_input, bpe_target, phoneme_target
-        )
-        net_input = {
-            "audio_source": collated_audios, 
-            "padding_mask": padding_mask, 
-            "prev_phoneme": data_list[0], 
-            "phoneme_padding_mask": phoneme_mask,
-            "mode": "speech",
-            "lengths": ((torch.from_numpy(np.array(audio_sizes))- (400-320)) / 320).int()
-        }
+        if "phoneme" in samples[0].keys():
+            phoneme_input = [s["phoneme"] for s in samples]
+            phoneme_target = [s["phoneme_target"] for s in samples] 
+            phoneme_mask = self.phoneme_padding_mask(phoneme_input)
+            data_list, lengths_list, ntokens_list = self.collater_label(
+                phoneme_input, bpe_target, phoneme_target
+            )
+            net_input = {
+                "audio_source": collated_audios, 
+                "padding_mask": padding_mask, 
+                "prev_phoneme": data_list[0], 
+                "phoneme_padding_mask": phoneme_mask,
+                "mode": "speech",
+                "lengths": ((torch.from_numpy(np.array(audio_sizes))- (400-320)) / 320).int()
+            }
+        else:
+            data_list, lengths_list, ntokens_list = self.collater_label(
+                None, bpe_target,None
+            )
+            net_input = {
+                "audio_source": collated_audios, 
+                "padding_mask": padding_mask, 
+                "prev_phoneme": None, 
+                "phoneme_padding_mask": None,
+                "mode": "speech",
+                "lengths": ((torch.from_numpy(np.array(audio_sizes))- (400-320)) / 320).int()
+            }
         batch = {
             "id": torch.LongTensor([s["id"] for s in samples]),
             "net_input": net_input,
@@ -274,19 +307,22 @@ class AudioDataset(FairseqDataset):
         return targets, lengths, ntokens
 
     def collater_label(self, phoneme_input, bpe_target, phoneme_target):
-        phoneme_inputs, phoneme_lengths, phoneme_ntokens = self.collater_seq_label(
-            phoneme_input, self.pad_list[0]
-        )
-        bpe_targets, bpe_lengths, bpe_ntokens = self.collater_seq_label(
-            bpe_target, self.pad_list[1]
-        )
-        phoneme_targets, t_phoneme_lengths, t_phoneme_ntokens = self.collater_seq_label(
-            phoneme_target, self.pad_list[0]
-        )
-        
-        targets = [phoneme_inputs, bpe_targets, phoneme_targets]
-        lengths = [phoneme_lengths, bpe_lengths, t_phoneme_lengths]
-        ntokens = [phoneme_ntokens, bpe_ntokens, t_phoneme_ntokens]
+        targets = [None, None, None]
+        lengths = [None, None, None]
+        ntokens = [None, None, None]
+
+        if phoneme_input is not None:
+            targets[0], lengths[0], ntokens[0] = self.collater_seq_label(
+                phoneme_input, self.pad_list[0]
+            )
+        if bpe_target is not None:
+            targets[1], lengths[1], ntokens[1] = self.collater_seq_label(
+                bpe_target, self.pad_list[1]
+            )
+        if phoneme_target is not None:
+            targets[2], lengths[2], ntokens[2] = self.collater_seq_label(
+                phoneme_target, self.pad_list[0]
+            )
 
         return targets, lengths, ntokens
 

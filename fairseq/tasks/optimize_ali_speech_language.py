@@ -252,7 +252,7 @@ class OptimizingAlignmentTask(FairseqTask):
                 sample_ratios=sample_ratio,
                 batch_ratio=batch_ratio
             )
-        elif split == "dev":
+        elif split == "valid":
             audio_dataset = AudioDataset(
                 audio_path=self.cfg.speech_data,
                 sample_rate=self.cfg.sample_rate,
