@@ -194,7 +194,7 @@ class AudioDataset(FairseqDataset):
 
         phoneme_mask = self.phoneme_padding_mask(phoneme_input)
         data_list, lengths_list, ntokens_list = self.collater_label(
-            phoneme_input, bpe_target
+            phoneme_input, bpe_target, phoneme_target
         )
 
         net_input = {
