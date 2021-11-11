@@ -227,8 +227,6 @@ class OptimizingAlignmentTask(FairseqTask):
                 data_process=procs,
                 shuffle=self.cfg.shuffle,
                 pad_list=pad_list,
-                max_tokens=self.cfg.text_max_token,
-                max_sentences=self.cfg.text_max_sentences,
                 lexicon_path=self.cfg.lexicon_path,
                 accume_path=self.cfg.accum_path
             )
