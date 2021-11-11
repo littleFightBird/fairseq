@@ -39,6 +39,8 @@ class ConcatDataset(FairseqDataset):
         return self.datasets[dataset_idx][sample_idx]
 
     def _get_dataset_and_sample_index(self, idx: int):
+        print(self.cumulative_sizes)
+        print(idx)
         dataset_idx = bisect.bisect_right(self.cumulative_sizes, idx)
         if dataset_idx == 0:
             sample_idx = idx
