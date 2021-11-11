@@ -201,7 +201,8 @@ class AudioDataset(FairseqDataset):
             "padding_mask": padding_mask, 
             "prev_phoneme": data_list[0], 
             "phoneme_padding_mask": phoneme_mask,
-            "mode": "speech"
+            "mode": "speech",
+            "lengths": torch.from_numpy(np.array(audio_sizes))
         }
         batch = {
             "id": torch.LongTensor([s["id"] for s in samples]),
@@ -397,7 +398,8 @@ class TextDataset(FairseqDataset):
         net_input = {
             "prev_phoneme": phoneme_input, 
             "phoneme_padding_mask": phoneme_mask,
-            "mode":"text"
+            "mode":"text",
+            "lengths":phoneme_lengths
         }
         batch = {
             "id": torch.LongTensor([s["id"] for s in samples]),
