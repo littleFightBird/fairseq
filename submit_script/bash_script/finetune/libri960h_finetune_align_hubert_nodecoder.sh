@@ -49,7 +49,7 @@ python train.py \
     --activation-dropout 0.1 \
     --attention-dropout 0.1 \
     --dropout-input 0.1 \
-    --max-tokens 3200000 \
+    --max-tokens 50000 \
     --seed 2337 \
     --log-format json \
     --log-interval 200 \
