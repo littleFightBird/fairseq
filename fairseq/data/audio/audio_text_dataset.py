@@ -126,14 +126,12 @@ class AudioDataset(FairseqDataset):
         self.pad_audio = pad_audio
 
     def __getitem__(self, index):
-        print(self.audio_data_dict[index])
         wav = self.get_audio(index)
         phoneme_token,bpe_token = self.get_label(index)
         '''
             notice!!!
             phoneme > 10 is because of the 0-10 in the dictionary of phoneme is <eps>, SIL, SPN 
         '''
-        print(phoneme_token, bpe_token)
         phoneme_token_no_rep = [ phoneme_token[i] for i in range(1,len(phoneme_token)) if phoneme_token[i] > 10 and (i==1 or phoneme_token[i]!=phoneme_token[i-1]) ]
         return {"id": index, "source": wav, "phoneme": phoneme_token, "bpe":bpe_token, "phoneme_target": phoneme_token_no_rep}
 
@@ -166,7 +164,9 @@ class AudioDataset(FairseqDataset):
 
     def get_label(self, index):
         data = self.audio_data_dict[index]
+        print(data["phoneme"])
         phoneme_token = self.label_processors["phoneme"](data["phoneme"])
+        print(phoneme_token)
         bpe_token = self.label_processors["word"](data["word"])
         bpe_token = self.label_processors["bpe"](bpe_token)
         return phoneme_token, bpe_token
