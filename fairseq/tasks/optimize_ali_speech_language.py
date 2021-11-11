@@ -59,7 +59,7 @@ class SentencepiecesTokenizer(object):
         self._build_sentence_piece_processor()
         if isinstance(line, List):
             string_build = ''
-            for s in label:
+            for s in line:
                 string_build += s
             line = string_build
         return self.sp.EncodeAsPieces(line)
