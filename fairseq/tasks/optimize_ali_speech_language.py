@@ -135,11 +135,11 @@ class OptimizingAlignmentConfig(FairseqDataclass):
         default=MISSING,
         metadata={"help": "accumulate file of phoneme"}
     )
-    sample_ratio: float = field(
+    sample_ratio: List = field(
         default=[1,1],
         metadata={"help": "token num speech:text"}
     )
-    batch_ratio: float = field(
+    batch_ratio: List = field(
         default=[1, 100],
         metadata={"help": "batch size speech: text"}
     )
