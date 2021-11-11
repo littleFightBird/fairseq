@@ -105,7 +105,7 @@ class OptimizingAlignmentConfig(FairseqDataclass):
         metadata={"help": "min sample size to crop to for batching"},
     )
     pad_audio: Optional[bool] = field(
-        default=False,
+        default=True,
         metadata={"help": "pad audio to the longest one in the batch if true"},
     )
     shuffle: bool=field(

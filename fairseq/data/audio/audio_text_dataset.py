@@ -179,6 +179,7 @@ class AudioDataset(FairseqDataset):
         audios = [s["source"] for s in samples]
         audio_sizes = [len(s) for s in audios]
         if self.pad_audio:
+            print(max(audio_sizes), self.max_sample_size)
             audio_size = min(max(audio_sizes), self.max_sample_size)
         else:
             audio_size = min(min(audio_sizes), self.max_sample_size)
