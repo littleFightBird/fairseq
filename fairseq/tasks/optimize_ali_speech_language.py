@@ -7,7 +7,7 @@ import logging
 import os
 from random import shuffle
 import sys
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, MutableMapping, Optional, Tuple, Union
 from fairseq.dataclass import configs
 
 import numpy as np
@@ -16,7 +16,7 @@ import sentencepiece as spm
 from dataclasses import dataclass, field
 from fairseq.data import Dictionary
 from fairseq.data.audio.audio_text_dataset import AudioDataset, TextDataset
-from fairseq.data.audio.multi_modality_dataset import MultiModalityDataset, ModalityDatasetItem
+from fairseq.data.audio.multitask_dataset import MultitaskDataset
 from fairseq.dataclass.configs import FairseqDataclass
 from fairseq.tasks import register_task
 from fairseq.tasks.fairseq_task import FairseqTask
@@ -230,22 +230,9 @@ class OptimizingAlignmentTask(FairseqTask):
                 lexicon_path=self.cfg.lexicon_path,
                 accume_path=self.cfg.accum_path
             )
-            audio_item = ModalityDatasetItem(
-                datasetname="speech",
-                dataset=audio_dataset,
-                max_positions=self.cfg.max_sample_size,
-                max_tokens=self.cfg.audio_max_token,
-                max_sentences=self.cfg.audio_max_sentences
-            )
-            text_item = ModalityDatasetItem(
-                datasetname="text",
-                dataset=text_dataset,
-                max_positions=self.cfg.max_sample_size,
-                max_tokens=self.cfg.text_max_token,
-                max_sentences=self.cfg.text_max_sentences,
-            )
-            self.datasets[split] = MultiModalityDataset(
-                datasets=[audio_item, text_item]
+            
+            self.datasets[split] = MultitaskDataset(
+                datasets=[audio_dataset, text_dataset]
             )
         elif split == "dev":
             audio_dataset = AudioDataset(
