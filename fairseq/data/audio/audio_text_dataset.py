@@ -221,7 +221,8 @@ class AudioDataset(FairseqDataset):
         phoneme_sizes = [ len(s) for s in phoneme_target]
         max_size = max(phoneme_sizes)
         batch_size = len(phoneme_target)
-        padd_mask = torch.zeros((batch_size, max_size)).bool
+        padd_mask = torch.zeros((batch_size, max_size)).bool()
+
         print(batch_size,max_size)
         print(phoneme_sizes)
         print(padd_mask.shape)
