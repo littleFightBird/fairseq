@@ -166,7 +166,7 @@ class MultitaskDataset(FairseqDataset):
         for i in range(len(self.datasets)):
             # dataset = _deep_until_language_pair(dataset)
             self._ordered_indices[i], ignored = self.datasets[i].filter_indices_by_size(
-                self._ordered_indices[i], max_positions[i]
+                self._ordered_indices[i], max_positions
             )
             if len(ignored) > 0:
                 ignored_some = True
