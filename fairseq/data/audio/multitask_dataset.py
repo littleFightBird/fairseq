@@ -29,6 +29,7 @@ class MultitaskDataset(FairseqDataset):
         self.datasets = list(datasets)
         if isinstance(sample_ratios, int):
             sample_ratios = [sample_ratios] * len(self.datasets)
+            self.batch_ratio=None
         else:
             logger.info('set sample ratio to ' + str(sample_ratios))
             if batch_ratio is not None:

@@ -135,6 +135,14 @@ class OptimizingAlignmentConfig(FairseqDataclass):
         default=MISSING,
         metadata={"help": "accumulate file of phoneme"}
     )
+    sample_ratio: float = field(
+        default=2.0,
+        metadata={"help": "token num speech:text"}
+    )
+    batch_ratio: float = field(
+        default=None,
+        metadata={"help": "batch size speech: text"}
+    )
     
 
 
@@ -233,7 +241,9 @@ class OptimizingAlignmentTask(FairseqTask):
             )
             
             self.datasets[split] = MultitaskDataset(
-                datasets=[audio_dataset, text_dataset]
+                datasets=[audio_dataset, text_dataset],
+                sample_ratios=self.cfg.sample_ratio,
+                batch_ratio=self.cfg.batch_ratio
             )
         elif split == "dev":
             audio_dataset = AudioDataset(
