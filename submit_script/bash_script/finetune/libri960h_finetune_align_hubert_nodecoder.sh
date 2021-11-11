@@ -54,7 +54,6 @@ python train.py \
     --log-format json \
     --log-interval 200 \
     --ddp-backend c10d \
-    --fp16 \
     --update-freq 1 \
     --keep-interval-updates 1 \
     --find-unused-parameters  \
