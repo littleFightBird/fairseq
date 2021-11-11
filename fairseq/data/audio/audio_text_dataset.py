@@ -107,7 +107,7 @@ class AudioDataset(FairseqDataset):
         pad_audio: bool = True,
         normalize: bool = False,
         fbank_bins: int = 80,
-        max_sample_size: int=None,
+        max_sample_size: int=100000000,
     ):
         self.audio_data_dict, self.audio_inds, self.audio_sizes = load_paired_data(
             audio_path, max_keep_sample_size, min_keep_sample_size
