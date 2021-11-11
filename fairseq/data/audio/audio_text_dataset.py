@@ -108,8 +108,6 @@ class AudioDataset(FairseqDataset):
         normalize: bool = False,
         fbank_bins: int = 80,
         max_sample_size: int=None,
-        max_tokens: int = None,
-        max_sentences: int = None,
     ):
         self.audio_data_dict, self.audio_inds, self.audio_sizes = load_paired_data(
             audio_path, max_keep_sample_size, min_keep_sample_size
@@ -123,11 +121,7 @@ class AudioDataset(FairseqDataset):
         self.label_processors = label_processors
         self.fbank_bins = fbank_bins
         self.max_sample_size = max_sample_size
-        self.max_tokens = max_tokens
-        self.max_sentences = max_sentences
-        self.max_positions = max_keep_sample_size
         self.normalize = normalize
-        self.datasetname = "speech"
         self.dataset = self
 
     def __getitem__(self, index):
@@ -307,20 +301,14 @@ class TextDataset(FairseqDataset):
         data_process:Optional[List[Any]] = None,
         shuffle: bool = True,
         pad_list: List[str] = None,
-        max_tokens: int = None,
-        max_sentences: int = None,
+        
     ):
         self.data_dict, self.inds, self.text_sizes = load_text_only_data(
             data_file_path, max_text_num, min_text_num
         )
         self.shuffle = shuffle
         self.pad_list = pad_list
-        self.datasetname = "text"
         self.dataset = self
-        self.max_tokens = max_tokens
-        self.max_sentences = max_sentences
-        self.max_positions = max_text_num
-
         self.lexicon = self.load_lexicon(lexicon_path)
         self.accum_stat = self.load_accum_stat(accume_path)
         self.data_process = data_process

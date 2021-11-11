@@ -16,7 +16,7 @@ import sentencepiece as spm
 from dataclasses import dataclass, field
 from fairseq.data import Dictionary
 from fairseq.data.audio.audio_text_dataset import AudioDataset, TextDataset
-from fairseq.data.audio.multi_modality_dataset import MultiModalityDataset
+from fairseq.data.audio.multi_modality_dataset import MultiModalityDataset, ModalityDatasetItem
 from fairseq.dataclass.configs import FairseqDataclass
 from fairseq.tasks import register_task
 from fairseq.tasks.fairseq_task import FairseqTask
@@ -218,8 +218,6 @@ class OptimizingAlignmentTask(FairseqTask):
                 pad_audio=self.cfg.pad_audio,
                 fbank_bins=self.cfg.fbank_bin,
                 max_sample_size=self.cfg.max_keep_size,
-                max_tokens=self.cfg.audio_max_token,
-                max_sentences=self.cfg.audio_max_sentences
             )
 
             text_dataset = TextDataset(
@@ -234,12 +232,25 @@ class OptimizingAlignmentTask(FairseqTask):
                 lexicon_path=self.cfg.lexicon_path,
                 accume_path=self.cfg.accum_path
             )
-
+            audio_item = ModalityDatasetItem(
+                datasetname="speech",
+                dataset=audio_dataset,
+                max_positions=self.cfg.max_sample_size,
+                max_tokens=self.cfg.audio_max_token,
+                max_sentences=self.cfg.audio_max_sentences
+            )
+            text_item = ModalityDatasetItem(
+                datasetname="text",
+                dataset=text_dataset,
+                max_positions=self.cfg.max_sample_size,
+                max_tokens=self.cfg.text_max_token,
+                max_sentences=self.cfg.text_max_sentences,
+            )
             self.datasets[split] = MultiModalityDataset(
-                datasets=[audio_dataset,text_dataset]
+                datasets=[audio_item, text_item]
             )
         elif split == "dev":
-            audio_dataset = audio_dataset = AudioDataset(
+            audio_dataset = AudioDataset(
                 audio_path=self.cfg.speech_data,
                 sample_rate=self.cfg.sample_rate,
                 label_processors=procs,
@@ -255,3 +266,4 @@ class OptimizingAlignmentTask(FairseqTask):
                 max_tokens=self.cfg.audio_max_token,
                 max_sentences=self.cfg.audio_max_sentences
             )
+            self.datasets[split] = audio_dataset
