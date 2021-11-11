@@ -268,6 +268,7 @@ class AudioDataset(FairseqDataset):
     def collater_seq_label(self, targets, pad):
         lengths = torch.LongTensor([len(t) for t in targets])
         ntokens = lengths.sum().item()
+        print(targets)
         targets = data_utils.collate_tokens(
             targets, pad_idx=pad, left_pad=False
         )
