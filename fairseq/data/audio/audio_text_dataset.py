@@ -132,6 +132,9 @@ class AudioDataset(FairseqDataset):
             notice!!!
             phoneme > 10 is because of the 0-10 in the dictionary of phoneme is <eps>, SIL, SPN 
         '''
+        print("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&")
+        print(phoneme_token)
+        print(bpe_token)
         phoneme_token_no_rep = [ phoneme_token[i] for i in range(1,len(phoneme_token)) if phoneme_token[i] > 10 and (i==1 or phoneme_token[i]!=phoneme_token[i-1]) ]
         return {"id": index, "source": wav, "phoneme": phoneme_token, "bpe":bpe_token, "phoneme_target": phoneme_token_no_rep}
 
