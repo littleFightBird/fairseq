@@ -225,13 +225,12 @@ class AudioDataset(FairseqDataset):
         padd_mask = torch.BoolTensor((batch_size, max_size)).fill_(False)
         for  i, phoneme in enumerate(phoneme_target):
             diff =  max_size - len(phoneme) 
-            
-            print(diff)
-            print(padd_mask.shape)
             if diff == 0:
                 continue
-            else:
-                padd_mask[i,diff:]=True
+            elif diff < 0:
+                print(diff)
+                print(padd_mask.shape)
+                padd_mask[i, diff:] = True
         return padd_mask
 
     def crop_to_max_size(self, wav, target_size):
