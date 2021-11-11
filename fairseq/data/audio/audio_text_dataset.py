@@ -363,7 +363,6 @@ class TextDataset(FairseqDataset):
                 for s in word:
                     build_string += s+ " "
                 phoneme_seq = self.g2p(build_string)
-                print(phoneme_seq)
                 phoneme_seq = [i for i in phoneme_seq if i != ' ' and i!="'"]
                 phoneme_norep_token.extend(phoneme_seq)
                 for phoneme in phoneme_seq:
@@ -434,7 +433,7 @@ class TextDataset(FairseqDataset):
         phoneme_sizes = [ len(s) for s in phoneme_target]
         max_size = max(phoneme_sizes)
         batch_size = len(phoneme_target)
-        padd_mask = torch.BoolTensor((batch_size, max_size)).fill_(False)
+        padd_mask = torch.zeros((batch_size, max_size)).bool()
         for  i, phoneme in enumerate(phoneme_target):
             diff = len(phoneme) - max_size
             if diff == 0:
