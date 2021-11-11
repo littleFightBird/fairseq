@@ -363,7 +363,8 @@ class TextDataset(FairseqDataset):
                 for s in word:
                     build_string += s+ " "
                 phoneme_seq = self.g2p(build_string)
-                phoneme_seq = [i for i in phoneme_seq if i != ' ']
+                print(phoneme_seq)
+                phoneme_seq = [i for i in phoneme_seq if i != ' ' and i!="'"]
                 phoneme_norep_token.extend(phoneme_seq)
                 for phoneme in phoneme_seq:
                     phoneme_token.extend(self.accum_stat[phoneme])
