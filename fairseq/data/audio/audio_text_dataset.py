@@ -374,6 +374,9 @@ class TextDataset(FairseqDataset):
     def size(self, index):
         return self.sizes[index]
 
+    def num_tokens(self, index: int):
+        return self.size(index)
+
     def collater(self, samples):
         phoneme_input = [s["phoneme"] for s in samples]
         bpe_output = [s["bpe"] for s in samples ]
