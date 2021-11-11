@@ -145,7 +145,7 @@ class OptimizingAlignmentConfig(FairseqDataclass):
         metadata={"help": "token num speech:text"}
     )
     batch_ratio: str = field(
-        default="1:100",
+        default="1:10",
         metadata={"help": "batch size speech: text"}
     )
     
