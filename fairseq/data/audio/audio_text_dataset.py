@@ -123,6 +123,7 @@ class AudioDataset(FairseqDataset):
         self.max_sample_size = max_sample_size
         self.normalize = normalize
         self.dataset = self
+        self.pad_audio = pad_audio
 
     def __getitem__(self, index):
         wav = self.get_audio(index)
